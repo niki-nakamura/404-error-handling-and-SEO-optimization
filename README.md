@@ -1,116 +1,307 @@
-以下では、**リンク切れ(404エラー)への対処**を優先的に進めるために必要な手順と具体的なアクションプランをまとめています。  
-まずは「現状の確認 → リスト化 → 修正 → 再確認」という流れを踏み、**ユーザー＆SEOに悪影響のある404リンクを速やかに解消**していきます。
+以下では、**「GitHubのプライベートリポジトリにPythonスクリプトを配置し、サイトマップからURLを取得→404チェック→Slack通知を定期実行する」** ための、推奨フォルダ構成例と具体的なファイル内容をまとめます。  
+リポジトリ名はすでに「**404-error-handling-and-SEO-optimization**」とのことなので、そこに以下のファイル／ディレクトリを追加してください。
 
 ---
 
-## 1. リンク切れの現状確認手順
+# 推奨フォルダ構成
 
-### 1-1. Google Search Console (GSC) を活用
+```
+404-error-handling-and-SEO-optimization
+├─ .github
+│   └─ workflows
+│       └─ check_404.yml            # GitHub Actionsの設定ファイル
+├─ scripts
+│   └─ check_404.py                 # 実際のスクリプト本体
+├─ requirements.txt                 # Python依存パッケージのリスト
+└─ README.md                        # リポジトリ全体の説明書
+```
 
-1. **カバレッジレポートをチェック**  
-   - GSCの「カバレッジ」→「エラー」タブにて、`404` や `ソフト404` があるかを確認。  
-   - エラーURLが一覧化されているので、各URLをメモまたはエクスポート。  
-   - ※「見つかりませんでした」「ソフト404」などのステータスがあれば、Googleが見つけているリンク切れです。
-
-2. **「リンク」>「上位のリンク先のページ」 で404が起きていないか**  
-   - GSC左メニュー「リンク」→「上位のリンク先のページ」で、もしリンク先が 404になっているページがあれば確認。  
-   - 直接404と表示されなくても、「機能していないURL」が引き続きリンクされていれば修正が必要。
-
-### 1-2. サーバーアクセスログ or Screaming Frog などのクローリングツール
-
-1. **サーバーアクセスログ**  
-   - ログ分析ツールやスクリプトで `HTTP 404` を返しているURLを抽出。  
-   - ユーザーが実際にアクセスして404が発生した場合、サーバーログに記録されます。  
-   - 過去1ヶ月程度のログを確認すると、より網羅的に見つかることも。
-
-2. **クローリングツール（Screaming Frogなど）**  
-   - サイトをクロールし、内部リンク先が404になっているURLを一気に洗い出す。  
-   - 無料版だと500URLまでですが、中小規模サイトなら十分チェック可能です。  
-   - 「Response Codes」タブから `4xx` をフィルタリングして確認します。
+1. **`.github/workflows/check_404.yml`**  
+   - GitHub Actionsで定期実行するためのワークフローファイルです。  
+2. **`scripts/check_404.py`**  
+   - サイトマップを読み取り、URLを抽出して404を検出し、Slackに通知するPythonスクリプト。  
+3. **`requirements.txt`**  
+   - `requests`など、Pythonスクリプト実行に必要なライブラリを明記します。  
+4. **`README.md`**  
+   - セットアップ手順や使い方をドキュメント化しておくと、プロジェクトのメンバーや将来の運用で助かります。
 
 ---
 
-## 2. 不具合URLをリストアップ・分類
+# ファイル内容サンプル
 
-1. **リストアップした404 URLを一元化**  
-   - GSCのエクスポートやクローリングツールから得たリストをスプレッドシート等にまとめます。  
-   - 同じURLが重複していないか、どのくらいの件数があるかを把握。
+## 1. `.github/workflows/check_404.yml`
 
-2. **原因・対処方法の分類**  
-   - **誤字やタイプミス**: URLが単純に間違っている → リンク元を修正。  
-   - **既に削除したページへのリンク**: 運用方針で「不要なページだった」なら、そのリンクを削除 or 代替ページへリダイレクト。  
-   - **URLルール変更による不整合**: 以前 /blog/ → /column/ に移動したのに古いURLが残っているなど → 301リダイレクト設定。  
-   - **外部サイトからのリンクで404**: 対応が可能であれば外部サイトに修正を依頼 or 代替ページへ301リダイレクト。
+```yaml
+name: Check 404
 
----
+# スケジュールの設定
+# 下記のcronはUTC時刻で "0 2 * * *" = 毎日AM2時 (日本時間で11時) に実行
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # 手動トリガーでも実行可能にしておく
 
-## 3. 修正アクション
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-### 3-1. リンク元の修正
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
 
-- **社内運用が可能な場合**:  
-  - WordPressの投稿・固定ページなどのリンクを更新する。  
-  - 誤字URLであれば正しいURLに書き換え。  
-  - **複数記事に同じ誤URLがある場合**は一括検索し、一気に直す。
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
 
-### 3-2. 301リダイレクト設定
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
 
-1. **対象URL → 正規URLへ転送**  
-   - 削除ページの代替として機能の近いページやカテゴリページがあれば、.htaccessやリダイレクトプラグインを使って 301リダイレクトする。  
-   - リンク修正が難しい場合（外部サイトがリンク元など）は必須。
+      - name: Run 404 check script
+        # secrets.SLACK_WEBHOOK_URL はGitHubの「Settings > Secrets and variables > Actions」で登録
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          python scripts/check_404.py
+```
 
-2. **まとめてリダイレクト管理**  
-   - 大量に存在する場合、.htaccessでRedirectルールを複数書く or WordPressの「Redirection」等のプラグインを活用。  
-   - 誤ったリンクが二度と発生しないようURL設計を明示しておくとベター。
-
-### 3-3. サイトマップの更新
-
-- **404になっているURLがサイトマップに含まれていないか**  
-  - XMLサイトマップ生成プラグインで自動更新されていれば問題ないが、手動で管理している場合は削除・修正を忘れずに。  
-  - Google Search Consoleの「サイトマップ」ページでエラー報告が出ていれば修正後に再送信。
-
----
-
-## 4. 再確認と継続的なモニタリング
-
-1. **修正後に再クロール・再送信**  
-   - GSC「URL検査」機能 or サイトマップ再送信などで、修正が反映されているかチェック。  
-   - しばらく時間をおいてカバレッジレポートにエラーが残っていないか確認。
-
-2. **定期的な監視の仕組み**  
-   - サーバーログをスクリプトで解析し、404発生状況をSlackに通知する。  
-   - GSC APIを使って新たなエラーが出たらアラートを飛ばすなど、自動化・半自動化を検討。
+### ポイント
+- `on.schedule.cron` で毎日午前2時(UTC)に定期実行。日本時間では午前11時になります。  
+- `workflow_dispatch` で「Actions」タブから手動実行も可能。  
+- `SLACK_WEBHOOK_URL` はGitHubリポジトリの「Settings > Secrets and variables > Actions」から**シークレット変数**として登録してください。
 
 ---
 
-## 5. 同時に検討すべき関連SEO施策
+## 2. `scripts/check_404.py`
 
-リンク切れ対処とあわせて、**以下の点も整備**しておくと効果的です。
+以下のPythonスクリプトは、  
+- **トップのサイトマップ**(`https://good-apps.jp/sitemap.xml`)を取得  
+- 中に列挙されている**サブサイトマップ**(例えば `sitemap-pt-post-p1-2025-01.xml` など)を再帰的に取得し、  
+- そこに含まれる**全URL**を`requests.get()`でチェック  
+- ステータスコードが**404**のURLだけをSlackに通知  
+という流れのサンプルです。
 
-1. **パンくずリスト & 内部リンク最適化**  
-   - パンくずが適切なら、404ページへ誘導されるリスクが減り、ユーザーも迷わない。  
-   - 内部リンクテキストの見直しで、関連ページへの誘導を最適化し直帰率低減に繋げる。
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-2. **Custom 404ページのデザイン & ユーザー誘導**  
-   - 万が一404が起きても、検索BOXやトップへのリンクを表示するなど、**離脱を最小化する工夫**を施す。  
-   - 「カスタム404ページを作り、そこから主要コンテンツへ案内」することで、ユーザー体験を良くする。
+import requests
+import xml.etree.ElementTree as ET
+import os
 
-3. **Robots.txt / noindex の整合性**  
-   - 本来クロールさせたくないページが誤ってクローラブルになっていないか確認。  
-   - 404リンク修正と同時に不要ページをnoindex化するなど、クローラビリティ最適化を図る。
+# SlackのWebhook URL（GitHub Secretsにて登録し、envで読み込む）
+SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 
-4. **構造化データ (Breadcrumb、Article等) の実装確認**  
-   - パンくずリストに `BreadcrumbList` スキーマを設定している場合、404エラーが多いとGSC「エンハンスメント」で警告が出るケースも。  
-   - リンク修正後にリッチリザルトテストで確認し、エラーがないかを併せてチェック。
+# メインサイトマップ
+MAIN_SITEMAP_URL = "https://good-apps.jp/sitemap.xml"
+
+def fetch_sitemap(url):
+    """
+    指定したサイトマップURLを取得し、XMLのルート要素を返す。
+    失敗時はNone。
+    """
+    try:
+        r = requests.get(url, timeout=20)
+        if r.status_code == 200:
+            root = ET.fromstring(r.text)
+            return root
+    except Exception as e:
+        print(f"[Error] Failed to fetch sitemap: {url} \n {e}")
+    return None
+
+def extract_sitemap_urls(sitemap_root):
+    """
+    ルート要素から <loc> を持つサブサイトマップURLをリストで返す。
+    たとえば <sitemap><loc>～</loc></sitemap> のURLが対象。
+    """
+    urls = []
+    if sitemap_root is None:
+        return urls
+    ns = {'ns': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+    # サイトマップインデックスの場合は <sitemap> タグ内に <loc> がある
+    for sitemap in sitemap_root.findall('ns:sitemap', ns):
+        loc = sitemap.find('ns:loc', ns)
+        if loc is not None and loc.text:
+            urls.append(loc.text.strip())
+    return urls
+
+def extract_page_urls(sitemap_root):
+    """
+    サブサイトマップ（URLリストが直接含まれるもの）から <url><loc>～</loc></url> のURLを取得。
+    """
+    urls = []
+    if sitemap_root is None:
+        return urls
+    ns = {'ns': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+    for url_elem in sitemap_root.findall('ns:url', ns):
+        loc = url_elem.find('ns:loc', ns)
+        if loc is not None and loc.text:
+            urls.append(loc.text.strip())
+    return urls
+
+def get_all_urls_from_sitemaps(url):
+    """
+    メインサイトマップ -> サブサイトマップ -> 各URL の階層を再帰的にたどり、
+    すべてのURL（最終的にWebページへのリンク）を集めて返す。
+    """
+    all_urls = []
+    root = fetch_sitemap(url)
+    if root is None:
+        return all_urls
+
+    # サブサイトマップのURL一覧を抜き出す
+    subs = extract_sitemap_urls(root)
+
+    if subs:
+        # サブサイトマップがある場合、再帰的にたどる
+        for sub in subs:
+            sub_root = fetch_sitemap(sub)
+            # さらにサブサブがあるかもしれない
+            deeper_subs = extract_sitemap_urls(sub_root)
+            if deeper_subs:
+                for deeper_sub in deeper_subs:
+                    deeper_root = fetch_sitemap(deeper_sub)
+                    all_urls.extend(extract_page_urls(deeper_root))
+            else:
+                # ここに直接URLが含まれているはず
+                all_urls.extend(extract_page_urls(sub_root))
+    else:
+        # サブサイトマップがない場合、直接URLが含まれている可能性あり
+        all_urls.extend(extract_page_urls(root))
+
+    return all_urls
+
+def check_404_urls(url_list):
+    """
+    GETリクエストして404のURLをリストで返す。
+    """
+    not_found = []
+    for u in url_list:
+        try:
+            resp = requests.get(u, timeout=10)
+            if resp.status_code == 404:
+                not_found.append(u)
+        except Exception as e:
+            # ネットワークエラーやタイムアウトはとりあえず404扱いにはせず、ログだけ残す
+            print(f"[Warning] Request error for {u}: {e}")
+    return not_found
+
+def send_slack_notification(message):
+    """
+    Slack Webhookに対してメッセージをPOSTする。
+    """
+    if not SLACK_WEBHOOK_URL:
+        print("[Error] SLACK_WEBHOOK_URL is not set.")
+        return
+
+    payload = {"text": message}
+    try:
+        r = requests.post(SLACK_WEBHOOK_URL, json=payload, timeout=10)
+        if r.status_code != 200:
+            print(f"[Error] Slack responded with status {r.status_code}: {r.text}")
+    except Exception as e:
+        print(f"[Error] Failed to send Slack notification: {e}")
+
+def main():
+    print("[Info] Starting 404 check ...")
+
+    # 1) サイトマップから全URLを抽出
+    all_urls = get_all_urls_from_sitemaps(MAIN_SITEMAP_URL)
+    print(f"[Info] Found {len(all_urls)} URLs in sitemap(s).")
+
+    # 2) 404のURLをチェック
+    not_found_urls = check_404_urls(all_urls)
+
+    # 3) Slack通知
+    if not not_found_urls:
+        message = "【404チェック結果】\n404は検出されませんでした。"
+    else:
+        message = "【404チェック結果】\n以下のURLが404でした:\n" + "\n".join(not_found_urls)
+
+    print("[Info] Sending Slack notification...")
+    send_slack_notification(message)
+    print("[Info] Done.")
+
+if __name__ == "__main__":
+    main()
+```
+
+### スクリプトの動作概要
+1. **`MAIN_SITEMAP_URL`**（`https://good-apps.jp/sitemap.xml`）を取得。  
+2. **`extract_sitemap_urls()`** で「サブサイトマップ」があるか確認し、再帰的にたどる。  
+3. **`extract_page_urls()`** で実際の「投稿ページのURL」を抽出。  
+4. 全URLに対し**GETリクエスト**を送信し、**`404`のみ抽出**。  
+5. Slack Webhookへ結果を通知（検出件数が0なら「404はありません」報告）。
 
 ---
 
-## まとめ & 次のアクション
+## 3. `requirements.txt`
 
-1. **現状把握**: GSCカバレッジ＋クローリングツール(Screaming Frog)やアクセスログで404 URLを洗い出す。  
-2. **リスト化・分類**: どのリンクが原因か、修正先URLは何かを整理。  
-3. **対応策**: リンク元修正・301リダイレクト・サイトマップ更新。  
-4. **再確認**: GSCでエラーが消えているか、サイト内クリックで404にならないか検証。  
-5. **定期モニタリング**: 404が再発生しないようログ解析やGSC API連携でアラートを設定。  
+```text
+requests>=2.0
+```
 
-この一連の流れでリンク切れを解消し、ユーザー体験・検索エンジン評価ともに向上させます。合わせて**内部リンクや404ページの最適化、ロボット制御ファイル（robots.txt）チェック**なども行うと、より堅牢かつスムーズなサイト運営が実現します。（検討中）
+- スクリプトで使うライブラリのバージョンを指定。  
+- GitHub Actionsの「Install dependencies」ステップで `pip install -r requirements.txt` が実行されます。
+
+---
+
+## 4. `README.md` (簡易例)
+
+```markdown
+# 404 Error Handling and SEO Optimization
+
+このリポジトリは、以下のタスクを自動化するためのスクリプトを含みます。
+
+- サイトマップから全URLを取得し、404ステータスのページを検出
+- Slackへ404報告を送信（Webhook使用）
+- GitHub Actionsで定期的に実行
+
+## ファイル構成
+
+```
+.
+├─ .github/workflows/check_404.yml
+├─ scripts/check_404.py
+├─ requirements.txt
+└─ README.md
+```
+
+### `scripts/check_404.py`
+- Python 3.x で動くスクリプト。
+- `requests` ライブラリを使用。
+- `SLACK_WEBHOOK_URL` 環境変数が設定されている必要があります。
+
+### 実行方法
+
+1. リポジトリをクローン
+2. Python 3.x 環境で `pip install -r requirements.txt`
+3. SlackのWebhook URLを環境変数にセットし、スクリプトを実行
+   ```bash
+   export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/xxx/yyy/zzz"
+   python scripts/check_404.py
+   ```
+
+### GitHub Actionsの定期実行
+
+- `.github/workflows/check_404.yml` により、毎日AM2時(UTC)に自動実行されます。
+- リポジトリのSettings > Secrets and variables > Actions から `SLACK_WEBHOOK_URL` を登録しておいてください。
+```
+
+---
+
+# 運用の流れ
+
+1. リポジトリ（`404-error-handling-and-SEO-optimization`）の**Settings** → **Secrets and variables** → **Actions** に「`SLACK_WEBHOOK_URL`」を追加します。  
+2. `main`ブランチに上記ファイルをプッシュすると、GitHub Actionsが自動で起動します。  
+3. 毎日指定した時刻（上記例ではUTC 02:00）に定期実行され、404がある場合はSlackに報告されます。  
+4. スクリプトを手動で走らせたい場合は、Actionsタブ → 該当ワークフロー → 「Run workflow」をクリック。
+
+---
+
+# まとめ
+
+- **フォルダ構成**としては「`.github/workflows/` にCI設定」「`scripts/` にPythonコード」「トップレベルに `requirements.txt` と `README.md`」がシンプルで管理しやすいです。  
+- **サイトマップから全URLを収集→404チェック→Slack通知→GitHub Actionsで定期実行**というフローで、無料枠内で運用可能です。  
+- 今後は、ステータスコードを404以外にも広げる・エラー報告の書式を改善するなど、必要に応じて拡張してください。

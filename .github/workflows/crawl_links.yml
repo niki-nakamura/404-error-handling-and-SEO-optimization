@@ -1,0 +1,33 @@
+# .github/workflows/crawl_links.yml
+
+name: Link Checker
+
+on:
+  schedule:
+    # 月曜・木曜の午前8時(UTC)に定期実行
+    - cron: '0 8 * * 1'
+    - cron: '0 8 * * 4'
+  workflow_dispatch:  # 手動トリガー可能
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run crawler
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          python scripts/crawl_links.py

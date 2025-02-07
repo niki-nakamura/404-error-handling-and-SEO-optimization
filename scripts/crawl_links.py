@@ -66,12 +66,19 @@ def send_slack_notification(broken):
         print("SLACK_WEBHOOK_URL is not set.")
         return
 
+    # ヘッダー部分のデザイン
+    msg = "\n"
+    msg += "@Niki Nakamura/GMO-NK\n\n"
+    msg += "404チェック結果🗣📢\n\n"
+    msg += "👇検出された404ページは以下の通りです👇\n\n"
+
     if not broken:
-        msg = "[Link Checker]\nNo broken links found!"
+        msg += "No broken links found!\n"
     else:
-        msg = "[Link Checker]\nBroken links found:\n"
+        # 各リンクごとに改行を入れて表示
         for source, url, status in broken:
-            msg += f"- {url} [Status: {status}] (発見元: {source})\n"
+            msg += f"- {url} [Status: {status}]\n"
+            msg += f"検出記事元：{source}\n\n"
 
     try:
         requests.post(SLACK_WEBHOOK_URL, json={"text": msg}, timeout=10)

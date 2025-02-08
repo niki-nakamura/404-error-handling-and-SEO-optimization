@@ -3,11 +3,7 @@
 name: Link Checker
 
 on:
-  schedule:
-    # 月曜・木曜の午前8時(UTC)に定期実行
-    - cron: '0 8 * * 1'
-    - cron: '0 8 * * 4'
-  workflow_dispatch:  # 手動トリガー可能
+  workflow_dispatch:  # 手動トリガーのみ
 
 jobs:
   build:

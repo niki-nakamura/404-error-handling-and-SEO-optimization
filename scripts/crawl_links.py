@@ -31,8 +31,9 @@ def crawl(start_url):
         if is_internal_link(current):
             try:
                 resp = requests.get(current, timeout=10)
-                if resp.status_code >= 400:
-                    # ページ自体の取得が失敗している場合は、source も current として記録
+                # 404のみをエラー対象とする
+                if resp.status_code == 404:
+                    # ページ自体の取得が404の場合は、source も current として記録
                     broken_links.append((current, current, resp.status_code))
                     continue
                 soup = BeautifulSoup(resp.text, 'html.parser')
@@ -51,10 +52,10 @@ def crawl(start_url):
             check_status(current, None)
 
 def check_status(url, source):
-    # 外部リンクの簡易チェック
+    # 外部リンクの簡易チェック（404のみ検知）
     try:
         r = requests.head(url, timeout=5)
-        if r.status_code >= 400:
+        if r.status_code == 404:
             ref = source if source else url
             broken_links.append((ref, url, r.status_code))
     except Exception as e:

@@ -28,7 +28,7 @@ HEADERS = {
 # Slack Webhook 用の設定
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 # Google Sheets 用の設定（シートIDのみを指定する）
-GOOGLE_SHEET_ID = "1Ht9EjkZebHhm2gA6q5KR16Qs8jppSdaud-QxJZ2y7tU"  # 実際のシートIDに置き換える
+GOOGLE_SHEET_ID = "1DrEs-tAk2zlqKXBzVIwl2cbo_m7x39ySCKUjg7y_o7I"  # 実際のシートIDに置き換える
 
 def is_internal_link(url):
     parsed = urlparse(url)

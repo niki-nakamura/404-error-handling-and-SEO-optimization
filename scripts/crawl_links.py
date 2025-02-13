@@ -149,15 +149,21 @@ def check_status(url, source):
         pass
 
 def update_google_sheet(broken):
-    scope = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = Credentials.from_service_account_file("service_account.json", scopes=scope)
-    client = gspread.authorize(creds)
-    sheet = client.open_by_key(GOOGLE_SHEET_ID).sheet1
+    try:
+        scope = ["https://www.googleapis.com/auth/spreadsheets"]
+        creds = Credentials.from_service_account_file("service_account.json", scopes=scope)
+        client = gspread.authorize(creds)
+        sheet = client.open_by_key(GOOGLE_SHEET_ID).sheet1
 
-    for source, url, status in broken:
-        row = [url, source, status]
-        print(f"[DEBUG] Appending row to sheet: {row}")
-        sheet.append_row(row)
+        for source, url, status in broken:
+            row = [url, source, status]
+            print(f"[DEBUG] Appending row to sheet: {row}")
+            try:
+                sheet.append_row(row)
+            except Exception as e:
+                print(f"[DEBUG] Error appending row {row}: {e}")
+    except Exception as e:
+        print(f"[DEBUG] Failed to update Google Sheet: {e}")
 
 def send_slack_notification(broken):
     if not SLACK_WEBHOOK_URL:

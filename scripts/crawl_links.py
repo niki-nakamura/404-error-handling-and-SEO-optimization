@@ -51,6 +51,7 @@ def is_excluded_domain(url):
     # 今回は「google 関連」全般を除外として例示。不要に応じて追加/変更可能。
     exclude_keywords = [
         "google.com",
+        "https://play.google.com/",
         "google.co.jp",
         "gstatic.com",
         "g.co",

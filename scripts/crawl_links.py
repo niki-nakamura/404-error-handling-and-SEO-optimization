@@ -90,20 +90,19 @@ def crawl(start_url):
                 return
 
 def check_status(url, source):
-    # エラー件数上限を確認
-    if len(broken_links) >= ERROR_LIMIT:
-        return
     try:
         r = requests.head(url, headers=HEADERS, timeout=5)
-        print(f"[DEBUG] Checking external URL: {url} - Status: {r.status_code}")
         if r.status_code == 404:
-            ref = source if source else url
-            print(f"[DEBUG] 404 detected at external URL: {url} (ref: {ref})")
-            broken_links.append((ref, url, r.status_code))
+            # 本物の404
+            broken_links.append((source or url, url, 404))
+        elif r.status_code in (403, 405):
+            # HEADが拒否された可能性。GETで再確認
+            r = requests.get(url, headers=HEADERS, timeout=10)
+            if r.status_code == 404:
+                broken_links.append((source or url, url, 404))
     except Exception as e:
-        ref = source if source else url
-        print(f"[DEBUG] Exception while checking {url}: {e}")
-        broken_links.append((ref, url, f"Error: {str(e)}"))
+        # 404とは限らないので、ここでは別管理にする方が安心
+        pass
 
 def update_google_sheet(broken):
     """

@@ -54,6 +54,7 @@ def is_excluded_domain(url):
         "play.google.com",
         "google.co.jp",
         "gstatic.com",
+        "apps.apple.com",
         "g.co",
         "youtu.be",
         "youtube.com",

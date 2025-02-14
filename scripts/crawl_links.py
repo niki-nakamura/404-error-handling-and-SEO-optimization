@@ -57,6 +57,7 @@ def is_excluded_domain(url):
         "apps.apple.com",
         "g.co",
         "youtu.be",
+        "amazon.co.jp",
         "youtube.com",
     ]
     return any(k in domain for k in exclude_keywords)

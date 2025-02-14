@@ -9,20 +9,20 @@ from collections import deque
 import gspread
 from google.oauth2.service_account import Credentials
 
-# クロール対象のURLは以下の3つのみ（/以降のすべてのURL）
+# クロール対象のURLは以下の3つのみ（/以降のすべてのURLが対象）
 ALLOWED_SOURCE_PREFIXES = [
     "https://good-apps.jp/media/column/",
-    "https://good-apps.jp/media/categor/",
+    "https://good-apps.jp/media/category/",
     "https://good-apps.jp/media/app/"
 ]
 
 BASE_DOMAIN = "good-apps.jp"  # 内部リンクの判定に使用
 
-# 404エラー検知の上限
+# 404エラー検知の上限（必要に応じて調整してください）
 ERROR_LIMIT = 10
 
 visited = set()
-# broken_links のタプル形式は (発生元記事, 壊れているリンク, ステータス)
+# broken_links のタプル形式は (発生元記事, 壊れているリンク, ステータス) ※内部で保持
 broken_links = []
 
 # ブラウザ風の User-Agent を設定
@@ -92,7 +92,7 @@ def crawl():
             resp = requests.get(current, headers=HEADERS, timeout=10)
             print(f"[DEBUG] Fetched {current} - Status: {resp.status_code}")
             if resp.status_code == 404:
-                # 直接アクセスしたページが404の場合、発生元記事として許可されているかチェック
+                # ページ自体が404なら、発生元記事として記録（対象であれば）
                 if is_allowed_source(current):
                     broken_links.append((current, current, resp.status_code))
                 if len(broken_links) >= ERROR_LIMIT:
@@ -109,17 +109,16 @@ def crawl():
                 link = urlparse(link)._replace(fragment="").geturl()
                 print(f"[DEBUG] Found link: {link}")
 
-                # 外部リンクの場合
+                # 外部リンクの場合はそのままチェック
                 if not is_internal_link(link):
                     if is_excluded_domain(link):
                         continue
-                    # 外部リンクは、現在のページ (current) を発生元としてチェック
                     check_status(link, current)
                     if len(broken_links) >= ERROR_LIMIT:
                         print(f"[DEBUG] Error limit reached during external link check.")
                         return
                 else:
-                    # 内部リンクは、許可対象（ALLOWED_SOURCE_PREFIXES）に限定してクロール
+                    # 内部リンクは、対象のプレフィックスに合致する場合のみ追跡
                     if is_allowed_source(link) and link not in visited:
                         queue.append(link)
 
@@ -157,11 +156,12 @@ def update_google_sheet(broken):
 
         # broken 内の各行は (発生元, URL, status) だが、出力時は status を除く
         rows = [[url, source] for source, url, status in broken]
-        # 既存の A 列のデータ数から次の空行を算出（ヘッダーが1行目なら2行目以降）
+        # A列の既存データ数を取得し、次の空行（例：ヘッダーが1行目なら2行目以降）から更新
         next_row = len(sheet.col_values(1)) + 1
         range_str = f"A{next_row}:B{next_row + len(rows) - 1}"
         print(f"[DEBUG] Updating range {range_str} with rows: {rows}")
-        sheet.update(range_str, rows, value_input_option="USER_ENTERED")
+        # ※ gspread の update() は「values」引数を先に、range_name を後に指定する必要があるため注意
+        sheet.update(rows, range_name=range_str, value_input_option="USER_ENTERED")
     except Exception as e:
         print(f"[DEBUG] Failed to update Google Sheet: {e}")
 

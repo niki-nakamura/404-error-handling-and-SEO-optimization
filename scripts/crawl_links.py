@@ -9,7 +9,7 @@ from collections import deque
 import gspread
 from google.oauth2.service_account import Credentials
 
-# クロール対象のURLは以下の3つのみ
+# クロール対象のURLは以下の3つのみ（/以降のすべてのURL）
 ALLOWED_SOURCE_PREFIXES = [
     "https://good-apps.jp/media/column/",
     "https://good-apps.jp/media/categor",
@@ -22,7 +22,7 @@ BASE_DOMAIN = "good-apps.jp"  # 内部リンクの判定に使用
 ERROR_LIMIT = 10
 
 visited = set()
-# broken_links のタプル形式は (発生元記事, 壊れているリンク, ステータス) ※内部では保持するが、出力時は無視する
+# broken_links のタプル形式は (発生元記事, 壊れているリンク, ステータス)
 broken_links = []
 
 # ブラウザ風の User-Agent を設定
@@ -155,14 +155,13 @@ def update_google_sheet(broken):
         client = gspread.authorize(creds)
         sheet = client.open_by_key(GOOGLE_SHEET_ID).sheet1
 
-        for source, url, status in broken:
-            # 出力はURLと発生元記事のみ（Statusは除去）
-            row = [url, source]
-            print(f"[DEBUG] Appending row to sheet: {row}")
-            try:
-                sheet.append_row(row)
-            except Exception as e:
-                print(f"[DEBUG] Error appending row {row}: {e}")
+        # broken 内の各行は (発生元, URL, status) だが、出力時は status を除く
+        rows = [[url, source] for source, url, status in broken]
+        # 既存の A 列のデータ数から次の空行を算出（ヘッダーが1行目なら2行目以降）
+        next_row = len(sheet.col_values(1)) + 1
+        range_str = f"A{next_row}:B{next_row + len(rows) - 1}"
+        print(f"[DEBUG] Updating range {range_str} with rows: {rows}")
+        sheet.update(range_str, rows, value_input_option="USER_ENTERED")
     except Exception as e:
         print(f"[DEBUG] Failed to update Google Sheet: {e}")
 

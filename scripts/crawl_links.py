@@ -91,8 +91,9 @@ def crawl():
         try:
             resp = requests.get(current, headers=HEADERS, timeout=10)
             print(f"[DEBUG] Fetched {current} - Status: {resp.status_code}")
-            if resp.status_code == 404:
-                # ページ自体が404なら、発生元記事として記録（対象であれば）
+            # もし current が ALLOWED_SOURCE_PREFIXES に含まれている場合は、
+            # たとえ404でも404と判定せず、リンク抽出を続行する
+            if resp.status_code == 404 and current not in ALLOWED_SOURCE_PREFIXES:
                 if is_allowed_source(current):
                     broken_links.append((current, current, resp.status_code))
                 if len(broken_links) >= ERROR_LIMIT:
@@ -100,6 +101,7 @@ def crawl():
                     return
                 continue
 
+            # HTMLの解析は常に行う（たとえ404でも base URL は除外）
             soup = BeautifulSoup(resp.text, 'html.parser')
             for a in soup.find_all('a', href=True):
                 if len(broken_links) >= ERROR_LIMIT:

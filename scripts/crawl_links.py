@@ -12,8 +12,8 @@ from google.oauth2.service_account import Credentials
 # クロール対象のURLは以下の3つのみ（/以降のすべてのURL）
 ALLOWED_SOURCE_PREFIXES = [
     "https://good-apps.jp/media/column/",
-    "https://good-apps.jp/media/categor",
-    "https://good-apps.jp/media/app"
+    "https://good-apps.jp/media/categor/",
+    "https://good-apps.jp/media/app/"
 ]
 
 BASE_DOMAIN = "good-apps.jp"  # 内部リンクの判定に使用

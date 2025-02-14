@@ -22,7 +22,7 @@ BASE_DOMAIN = "good-apps.jp"  # 内部リンクの判定に使用
 ERROR_LIMIT = 10
 
 visited = set()
-# broken_links のタプル形式は (発生元記事, 壊れているリンク, ステータス)
+# broken_links のタプル形式は (発生元記事, 壊れているリンク, ステータス) ※内部では保持するが、出力時は無視する
 broken_links = []
 
 # ブラウザ風の User-Agent を設定
@@ -156,7 +156,8 @@ def update_google_sheet(broken):
         sheet = client.open_by_key(GOOGLE_SHEET_ID).sheet1
 
         for source, url, status in broken:
-            row = [url, source, status]
+            # 出力はURLと発生元記事のみ（Statusは除去）
+            row = [url, source]
             print(f"[DEBUG] Appending row to sheet: {row}")
             try:
                 sheet.append_row(row)

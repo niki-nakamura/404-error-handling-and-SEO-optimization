@@ -19,7 +19,7 @@ ALLOWED_SOURCE_PREFIXES = [
 BASE_DOMAIN = "good-apps.jp"  # 内部リンクの判定に使用
 
 # 404エラー検知の上限（必要に応じて調整してください）
-ERROR_LIMIT = 10
+ERROR_LIMIT = 30
 
 visited = set()
 # broken_links のタプル形式は (発生元記事, 壊れているリンク, ステータス) ※内部で保持

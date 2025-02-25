@@ -1,19 +1,25 @@
+# .github/workflows/crawl_links.yml
 name: Link Checker
 
 on:
   schedule:
-    - cron: '0 6 * * 1'  # 毎週月曜 朝 6 時に実行
+    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # ← コミット・プッシュを許可するために必要
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false  # push する場合は false の方が安全
+          fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
@@ -27,3 +33,12 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           python scripts/crawl_links.py
+
+      - name: Commit & Push broken_links.csv
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add broken_links.csv
+          git commit -m "Update broken_links.csv [skip ci]" || echo "No changes to commit"
+          # ↑ 変更が無い場合はコミットしない
+          git push origin HEAD:${{ github.ref_name }}

@@ -22,17 +22,8 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Set up GCP service account file
-        env:
-          GCP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
-        run: |
-          echo "$GCP_SERVICE_ACCOUNT_JSON" > service_account.json
-
       - name: Run crawler
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           python scripts/crawl_links.py
-
-      - name: Clean up service account file
-        run: rm service_account.json

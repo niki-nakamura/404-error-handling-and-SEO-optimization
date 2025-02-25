@@ -1,24 +1,22 @@
-# .github/workflows/crawl_links.yml
 name: Link Checker
 
 on:
   schedule:
-    - cron: '0 6 * * 1'
+    # 毎日 朝 6 時に実行する場合は '0 6 * * *'
+    - cron: '0 6 * * *'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    # コードをpush(書き込み)するために必要
     permissions:
-      contents: write
+      contents: write  # CSVファイルをコミット＆プッシュするため
 
     steps:
       - name: Check out the repository
         uses: actions/checkout@v3
         with:
-          # GITHUB_TOKEN を使い push 可能にする
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
           fetch-depth: 0
@@ -41,14 +39,9 @@ jobs:
 
       - name: Commit & Push broken_links.csv
         run: |
-          # Git ユーザ情報の設定
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          # 404検知結果があればコミット＆プッシュ
           git add broken_links.csv
           git commit -m "Update broken_links.csv [skip ci]" || echo "No changes to commit"
-
-          # どのブランチへPushするかは運用に応じて調整
           git push origin HEAD:${{ github.ref_name }}
-

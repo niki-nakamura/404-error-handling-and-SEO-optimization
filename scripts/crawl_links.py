@@ -6,8 +6,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 import os
 from collections import deque
-import gspread
-from google.oauth2.service_account import Credentials
+import pandas as pd
 
 # クロール対象のURLは以下の3つのみ（/以降のすべてのURLが対象）
 ALLOWED_SOURCE_PREFIXES = [
@@ -33,8 +32,6 @@ HEADERS = {
 
 # Slack Webhook 用の設定
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
-# Google Sheets 用の設定（シートIDのみを指定する）
-GOOGLE_SHEET_ID = "1DrEs-tAk2zlqKXBzVIwl2cbo_m7x39ySCKUjg7y_o7I"
 
 def is_internal_link(url):
     """
@@ -151,23 +148,16 @@ def check_status(url, source):
         print(f"[DEBUG] Exception in check_status for URL: {url} - {e}")
         pass
 
-def update_google_sheet(broken):
-    try:
-        scope = ["https://www.googleapis.com/auth/spreadsheets"]
-        creds = Credentials.from_service_account_file("service_account.json", scopes=scope)
-        client = gspread.authorize(creds)
-        sheet = client.open_by_key(GOOGLE_SHEET_ID).sheet1
-
-        # broken 内の各行は (発生元, URL, status) だが、出力時は status を除く
-        rows = [[url, source] for source, url, status in broken]
-        # A列の既存データ数を取得し、次の空行（例：ヘッダーが1行目なら2行目以降）から更新
-        next_row = len(sheet.col_values(1)) + 1
-        range_str = f"A{next_row}:B{next_row + len(rows) - 1}"
-        print(f"[DEBUG] Updating range {range_str} with rows: {rows}")
-        # ※ gspread の update() は「values」引数を先に、range_name を後に指定する必要があるため注意
-        sheet.update(rows, range_name=range_str, value_input_option="USER_ENTERED")
-    except Exception as e:
-        print(f"[DEBUG] Failed to update Google Sheet: {e}")
+def update_streamlit_data(broken):
+    """
+    Streamlit 用に CSV ファイルへ書き出す例。
+    Streamlit 側で 'broken_links.csv' を読み込み、
+    ステータス管理ができるようにします。
+    """
+    # broken_links: [(発生元, 壊れたURL, ステータス), ...]
+    df = pd.DataFrame(broken, columns=["source", "url", "status"])
+    df.to_csv("broken_links.csv", index=False)
+    print("[DEBUG] 'broken_links.csv' に書き出しました。")
 
 def send_slack_notification(broken):
     if not SLACK_WEBHOOK_URL:
@@ -175,10 +165,11 @@ def send_slack_notification(broken):
         return
 
     count = len(broken)
-    sheets_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit?gid=0"
-    msg = (f"【404チェック結果】\n"
-           f"404が {count} 件検出されました。\n"
-           f"こちらよりエラーURLを確認してください。\n({sheets_url})")
+    msg = (
+        f"【404チェック結果】\n"
+        f"404が {count} 件検出されました。\n"
+        "詳細は Streamlit 側または 'broken_links.csv' でご確認ください。"
+    )
 
     try:
         r = requests.post(SLACK_WEBHOOK_URL, json={"text": msg}, headers=HEADERS, timeout=10)
@@ -194,7 +185,7 @@ def main():
     crawl()
     print("Crawl finished.")
     print(f"Detected {len(broken_links)} broken links.")
-    update_google_sheet(broken_links)
+    update_streamlit_data(broken_links)
     send_slack_notification(broken_links)
 
 if __name__ == "__main__":

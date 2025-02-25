@@ -34,8 +34,8 @@ else:
 
 st.write("▼ 以下のテーブルで、リンク状態を編集できます。")
 
-# experimental_data_editor を使ってインライン編集
-edited_df = st.experimental_data_editor(show_df, use_container_width=True)
+# st.data_editor は Streamlit 1.22+ で利用可能
+edited_df = st.data_editor(show_df, use_container_width=True)
 
 # 更新ボタン押下時
 if st.button("ステータス更新"):

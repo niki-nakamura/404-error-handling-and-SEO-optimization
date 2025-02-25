@@ -8,14 +8,14 @@ import os
 from collections import deque
 import pandas as pd
 
+# テスト用に小規模ドメイン(適宜変更)
 ALLOWED_SOURCE_PREFIXES = [
-    # テスト用に短いドメイン例
     "https://www.example.com/"
 ]
+BASE_DOMAIN = "example.com"
 
-BASE_DOMAIN = "example.com"  # 内部判定用
-
-MAX_404 = 5   # 404発見数が5件に達したら中断
+# 404を5件見つけたら終了
+MAX_404 = 5
 visited = set()
 broken_links = []
 
@@ -31,28 +31,17 @@ def is_internal_link(url):
     parsed = urlparse(url)
     return (parsed.netloc == "" or parsed.netloc.endswith(BASE_DOMAIN))
 
-def is_excluded_domain(url):
-    parsed = urlparse(url)
-    domain = parsed.netloc.lower()
-    exclude_keywords = [
-        "google.com",
-        "play.google.com",
-        # ...
-    ]
-    return any(k in domain for k in exclude_keywords)
-
 def is_allowed_source(url):
     return any(url.startswith(prefix) for prefix in ALLOWED_SOURCE_PREFIXES)
 
 def record_broken_link(source, url, status):
-    # 404発見数が5件に達したら中断するため、呼び出し元でチェック
     broken_links.append((source, url, status))
 
 def crawl():
     queue = deque(ALLOWED_SOURCE_PREFIXES)
     while queue:
         if len(broken_links) >= MAX_404:
-            print(f"[DEBUG] {MAX_404}件の404を検知。クロールを終了します。")
+            print(f"[DEBUG] 404が {MAX_404}件に達したため中断します。")
             return
 
         current = queue.popleft()
@@ -65,9 +54,8 @@ def crawl():
             resp = requests.get(current, headers=HEADERS, timeout=10)
             print(f"[DEBUG] Fetched {current} - Status: {resp.status_code}")
 
-            # 404でも ALLOWED_SOURCE_PREFIXES のURLなら継続してリンク抽出
+            # 404でも起点URLなら最後までリンク抽出
             if resp.status_code == 404 and current not in ALLOWED_SOURCE_PREFIXES:
-                # 発生元が ALLOWED_SOURCE_PREFIXES に含まれていれば broken_links に追加
                 if is_allowed_source(current):
                     record_broken_link(current, current, 404)
                 if len(broken_links) >= MAX_404:
@@ -81,11 +69,8 @@ def crawl():
 
                 link = urljoin(current, a_tag['href'])
                 link = urlparse(link)._replace(fragment="").geturl()
-                print(f"[DEBUG] Found link: {link}")
 
                 if not is_internal_link(link):
-                    if is_excluded_domain(link):
-                        continue
                     check_status(link, current)
                     if len(broken_links) >= MAX_404:
                         return
@@ -95,8 +80,7 @@ def crawl():
 
         except Exception as e:
             print(f"[DEBUG] Exception while processing {current}: {e}")
-            # 404でなくエラーの場合は任意で記録するか決める
-            pass
+            # 通信エラー等は記録せずスキップ
 
 def check_status(url, source):
     try:
@@ -104,6 +88,7 @@ def check_status(url, source):
         if r.status_code == 404:
             record_broken_link(source, url, 404)
         elif r.status_code in (403, 405):
+            # HEAD禁止系ならGETを試す
             r = requests.get(url, headers=HEADERS, timeout=10)
             if r.status_code == 404:
                 record_broken_link(source, url, 404)
@@ -117,10 +102,13 @@ def update_streamlit_data(broken):
 
 def send_slack_notification(broken):
     if not SLACK_WEBHOOK_URL:
-        print("No Slack webhook URL set.")
+        print("No Slack Webhook is set.")
         return
 
-    msg = f"【テスト用404チェック結果】\n404が {len(broken)} 件検出されました。"
+    msg = (
+        f"【404チェッカー(テスト版)】\n"
+        f"404が {len(broken)} 件検出されました。"
+    )
     try:
         r = requests.post(SLACK_WEBHOOK_URL, json={"text": msg}, headers=HEADERS, timeout=10)
         if r.status_code not in [200, 204]:

@@ -2,7 +2,7 @@ name: Link Checker
 
 on:
   schedule:
-    - cron: '0 6 * * 1'
+    - cron: '0 6 * * 1'  # 毎週月曜 朝 6 時に実行
   workflow_dispatch:
 
 jobs:

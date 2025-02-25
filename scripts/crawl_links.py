@@ -8,41 +8,44 @@ import os
 from collections import deque
 import pandas as pd
 
-# クロール対象のURLは以下の3つのみ（/以降のすべてのURLが対象）
+# クロール対象URLリスト
 ALLOWED_SOURCE_PREFIXES = [
     "https://good-apps.jp/media/column/",
     "https://good-apps.jp/media/category/",
     "https://good-apps.jp/media/app/"
 ]
 
-BASE_DOMAIN = "good-apps.jp"  # 内部リンクの判定に使用
+BASE_DOMAIN = "good-apps.jp"  # 内部ドメイン判定用
 
-# 404エラー検知の上限（必要に応じて調整してください）
+# 404エラー検知の上限
 ERROR_LIMIT = 30
 
 visited = set()
-# broken_links のタプル形式は (発生元記事, 壊れているリンク, ステータス) ※内部で保持
+# broken_links: [(発生元記事URL, 壊れたリンクURL, ステータス), ...]
 broken_links = []
 
-# ブラウザ風の User-Agent を設定
+# ブラウザ的な User-Agent
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/115.0.0.0 Safari/537.36"
+    )
 }
 
-# Slack Webhook 用の設定
+# Slack 用 webhook
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 
 def is_internal_link(url):
     """
-    URL が内部リンク (good-apps.jp) かどうかを判定
+    good-apps.jp への内部リンクかどうか判定
     """
     parsed = urlparse(url)
     return (parsed.netloc == "" or parsed.netloc.endswith(BASE_DOMAIN))
 
 def is_excluded_domain(url):
     """
-    Google系ドメインなど、404チェック不要のものはここで除外する
+    404チェック対象外ドメイン
     """
     parsed = urlparse(url)
     domain = parsed.netloc.lower()
@@ -61,65 +64,67 @@ def is_excluded_domain(url):
 
 def is_allowed_source(url):
     """
-    発生元記事またはクロール対象として許可されているかを判定
-    許可対象は ALLOWED_SOURCE_PREFIXES に含まれるURLのみ
+    発生元URLが指定のプレフィックス一覧に合致するか
     """
     return any(url.startswith(prefix) for prefix in ALLOWED_SOURCE_PREFIXES)
 
 def record_broken_link(source, url, status):
     """
-    発生元記事が許可されている場合のみ、broken_links に追加する
+    404 URL を broken_links リストに追加
     """
     if source and is_allowed_source(source):
         broken_links.append((source, url, status))
 
 def crawl():
-    # 初期キューは許可対象の3つのURL
+    """
+    クロールメイン処理。ALLOWED_SOURCE_PREFIXES を起点にリンクを辿る
+    """
     queue = deque(ALLOWED_SOURCE_PREFIXES)
     while queue:
         if len(broken_links) >= ERROR_LIMIT:
-            print(f"[DEBUG] Error limit of {ERROR_LIMIT} reached. Stopping crawl.")
+            print(f"[DEBUG] Reached error limit ({ERROR_LIMIT}). Stopping crawl.")
             return
 
         current = queue.popleft()
         if current in visited:
             continue
         visited.add(current)
-        print(f"[DEBUG] Crawling: {current}")
 
+        print(f"[DEBUG] Crawling: {current}")
         try:
             resp = requests.get(current, headers=HEADERS, timeout=10)
             print(f"[DEBUG] Fetched {current} - Status: {resp.status_code}")
-            # もし current が ALLOWED_SOURCE_PREFIXES に含まれている場合は、
-            # たとえ404でも404と判定せず、リンク抽出を続行する
+
+            # もし current が ALLOWED_SOURCE_PREFIXES に含まれていなければ
+            # 404の場合にはリストに追加
             if resp.status_code == 404 and current not in ALLOWED_SOURCE_PREFIXES:
                 if is_allowed_source(current):
                     broken_links.append((current, current, resp.status_code))
                 if len(broken_links) >= ERROR_LIMIT:
-                    print(f"[DEBUG] Error limit reached after processing {current}.")
                     return
                 continue
 
-            # HTMLの解析は常に行う（たとえ404でも base URL は除外）
+            # HTMLパース
             soup = BeautifulSoup(resp.text, 'html.parser')
-            for a in soup.find_all('a', href=True):
+            for a_tag in soup.find_all('a', href=True):
                 if len(broken_links) >= ERROR_LIMIT:
-                    print(f"[DEBUG] Error limit reached during link extraction.")
                     return
-                link = urljoin(current, a['href'])
+                link = urljoin(current, a_tag['href'])
+                # 同じリンクでも fragment (#...) は削除して正規化
                 link = urlparse(link)._replace(fragment="").geturl()
+
                 print(f"[DEBUG] Found link: {link}")
 
-                # 外部リンクの場合はそのままチェック
+                # 外部リンクチェック
                 if not is_internal_link(link):
                     if is_excluded_domain(link):
                         continue
                     check_status(link, current)
                     if len(broken_links) >= ERROR_LIMIT:
-                        print(f"[DEBUG] Error limit reached during external link check.")
                         return
                 else:
-                    # 内部リンクは、対象のプレフィックスに合致する場合のみ追跡
+                    # 内部リンクの場合で、
+                    # 再帰的にクロール可能かつ未訪問であればキューに追加
                     if is_allowed_source(link) and link not in visited:
                         queue.append(link)
 
@@ -128,38 +133,41 @@ def crawl():
             if is_allowed_source(current):
                 broken_links.append((current, current, f"Error: {str(e)}"))
             if len(broken_links) >= ERROR_LIMIT:
-                print(f"[DEBUG] Error limit reached after exception in {current}.")
                 return
 
 def check_status(url, source):
+    """
+    HEADリクエストでステータス判定し、404なら broken_links に追加
+    """
     if is_excluded_domain(url):
         return
     try:
         r = requests.head(url, headers=HEADERS, timeout=5, allow_redirects=True)
-        print(f"[DEBUG] Checking URL: {url} - Status: {r.status_code}")
+        print(f"[DEBUG] Checking {url} - HEAD status: {r.status_code}")
         if r.status_code == 404:
             record_broken_link(source, url, 404)
         elif r.status_code in (403, 405):
+            # HEAD禁止サイトなどは GET で再チェック
             r = requests.get(url, headers=HEADERS, timeout=10)
-            print(f"[DEBUG] GET fallback for URL: {url} - Status: {r.status_code}")
+            print(f"[DEBUG] GET fallback for {url} - Status: {r.status_code}")
             if r.status_code == 404:
                 record_broken_link(source, url, 404)
     except Exception as e:
-        print(f"[DEBUG] Exception in check_status for URL: {url} - {e}")
-        pass
+        print(f"[DEBUG] Exception in check_status for {url}: {e}")
+        # エラー時は追加登録しない
 
 def update_streamlit_data(broken):
     """
-    Streamlit 用に CSV ファイルへ書き出す例。
-    Streamlit 側で 'broken_links.csv' を読み込み、
-    ステータス管理ができるようにします。
+    broken_links.csv に書き出し
     """
-    # broken_links: [(発生元, 壊れたURL, ステータス), ...]
     df = pd.DataFrame(broken, columns=["source", "url", "status"])
     df.to_csv("broken_links.csv", index=False)
-    print("[DEBUG] 'broken_links.csv' に書き出しました。")
+    print("[DEBUG] Saved 'broken_links.csv'.")
 
 def send_slack_notification(broken):
+    """
+    Slack 通知（Webhook URL が設定されている場合のみ）
+    """
     if not SLACK_WEBHOOK_URL:
         print("SLACK_WEBHOOK_URL is not set.")
         return
@@ -167,14 +175,14 @@ def send_slack_notification(broken):
     count = len(broken)
     msg = (
         f"【404チェック結果】\n"
-        f"404が {count} 件検出されました。\n"
+        f"404 が {count} 件検出されました。\n"
         "詳細は Streamlit 側または 'broken_links.csv' でご確認ください。"
     )
 
     try:
         r = requests.post(SLACK_WEBHOOK_URL, json={"text": msg}, headers=HEADERS, timeout=10)
         if r.status_code not in [200, 204]:
-            print(f"[DEBUG] Slack notification failed with status {r.status_code}: {r.text}")
+            print(f"[DEBUG] Slack notification failed: {r.status_code} - {r.text}")
     except Exception as e:
         print(f"[DEBUG] Slack notification failed: {e}")
 

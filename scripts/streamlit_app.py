@@ -19,6 +19,10 @@ df = pd.read_csv(csv_file)
 if 'resolved' not in df.columns:
     df['resolved'] = False
 
+# 検出日カラムが存在しなければ追加
+if 'detected_date' not in df.columns:
+    df['detected_date'] = ""
+
 # フィルタラジオボタン
 filter_option = st.radio(
     "表示するデータのフィルタ:",
@@ -40,7 +44,9 @@ edited_df = st.data_editor(show_df, use_container_width=True)
 # 更新ボタン押下時
 if st.button("ステータス更新"):
     for idx, row in edited_df.iterrows():
-        df.loc[df['url'] == row['url'], 'resolved'] = row['resolved']
+        # 同じ source, url を持つ行を df から抽出して 'resolved' を更新
+        mask = (df['url'] == row['url']) & (df['source'] == row['source'])
+        df.loc[mask, 'resolved'] = row['resolved']
 
     df.to_csv(csv_file, index=False)
     st.success("ステータスを更新しました。")

@@ -2,8 +2,10 @@ name: Link Checker
 
 on:
   schedule:
-    - cron: '0 6 * * *'    # 毎日 朝6時
-    - cron: '30 9 * * 1'   # 毎週月曜 9:30
+    # 毎日 朝6時
+    - cron: '0 6 * * *'
+    # 毎週月曜 9:30
+    - cron: '30 9 * * 1'
   workflow_dispatch:
 
 jobs:

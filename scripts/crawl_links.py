@@ -63,6 +63,7 @@ def is_allowed_source(url):
 
 
 def record_broken_link(source, url, status):
+    # source がクローラー対象の記事であれば broken_links に追加
     if source and is_allowed_source(source):
         broken_links.append((source, url, status))
 
@@ -152,9 +153,9 @@ def update_csv(broken):
     old_df = pd.DataFrame(columns=["source", "url", "status", "detected_date"])
     if os.path.exists("broken_links.csv"):
         old_df = pd.read_csv("broken_links.csv")
-        for col in ["detected_date"]:
-            if col not in old_df.columns:
-                old_df[col] = ""
+        # カラム不足を補填
+        if "detected_date" not in old_df.columns:
+            old_df["detected_date"] = ""
 
     old_map = {}
     for _, row in old_df.iterrows():
@@ -186,6 +187,7 @@ def update_csv(broken):
         updated_rows.append(row)
 
     new_df = pd.DataFrame(updated_rows)
+    # 日付が空のものを埋める
     mask_no_date = new_df["detected_date"].isnull() | (new_df["detected_date"] == "")
     new_df.loc[mask_no_date, "detected_date"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     new_df.to_csv("broken_links.csv", index=False)

@@ -82,3 +82,8 @@ if st.button("ステータス更新"):
         json.dump(out_data, f, ensure_ascii=False, indent=2)
 
     st.success("resolved_links.json に書き込み完了 (まだ git push はしない)")
+
+subprocess.run(["git", "add", "resolved_links.json"], check=True)
+subprocess.run(["git", "commit", "-m", "Update resolved_links.json [skip ci]"], check=True)
+subprocess.run(["git", "push", "origin", "main"], check=True)
+

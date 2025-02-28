@@ -7,17 +7,20 @@ from datetime import datetime
 CSV_FILE = "broken_links.csv"
 JSON_FILE = "resolved_links.json"
 
-st.title("404リンク管理アプリ (CSV + JSON 分離版)")
-st.write("CSV には最新の404リンク一覧を自動生成し、チェック状態は JSON に記録して保持")
+st.title("404リンク管理アプリ (自動保存版)")
+st.write("""
+CSV には最新の404リンク一覧を自動生成し、チェック状態は JSON に記録して保持します。
+チェックボックスを変更するたびに JSON が自動更新されます。
+""")
 
-# 1. broken_links.csv を読み込み (存在しない場合は警告)
+# ▼ 1) CSVを読み込み （無ければ停止）
 if not os.path.exists(CSV_FILE):
-    st.warning("まだ404リンク情報がありません。クローラー未実行、またはCIが未完了です。")
+    st.warning("まだ404リンク情報がありません。クローラー未実行 or CI未完了の可能性。")
     st.stop()
 
 df_404 = pd.read_csv(CSV_FILE)
 
-# 2. resolved_links.json を読み込み (無ければ空リスト)
+# ▼ 2) JSONを読み込み。無ければ空リスト。
 resolved_records = []
 if os.path.exists(JSON_FILE):
     with open(JSON_FILE, "r", encoding="utf-8") as f:
@@ -28,28 +31,28 @@ else:
 
 df_resolved = pd.DataFrame(resolved_records)
 
-# 必要な列が無ければ補完 (source/url/resolved/resolved_date)
-if "source" not in df_resolved.columns:
-    df_resolved["source"] = ""
-if "url" not in df_resolved.columns:
-    df_resolved["url"] = ""
-if "resolved" not in df_resolved.columns:
-    df_resolved["resolved"] = False
-if "resolved_date" not in df_resolved.columns:
-    df_resolved["resolved_date"] = ""
+# ▼ 必要な列を作る（空の状態に備える）
+for col in ["source", "url", "resolved", "resolved_date"]:
+    if col not in df_resolved.columns:
+        # 型に合わせて初期化
+        if col in ["source", "url", "resolved_date"]:
+            df_resolved[col] = ""
+        elif col == "resolved":
+            df_resolved[col] = False
 
-# 3. df_404 と df_resolved をキー (source, url) でマージ
+# ▼ 3) df_404 と df_resolved を (source, url) でマージ
 merged_df = pd.merge(
     df_404, df_resolved,
     on=["source", "url"],
     how="left"
 )
 
-# merged_df["resolved"], merged_df["resolved_date"] が NaN の場合を初期化
+# もし merged_df["resolved"] が NaN の場合、Falseに
 merged_df["resolved"] = merged_df["resolved"].fillna(False)
+# もし merged_df["resolved_date"] が NaN の場合、空文字に
 merged_df["resolved_date"] = merged_df["resolved_date"].fillna("")
 
-# 4. フィルタUI
+# ▼ 4) フィルタ
 filter_option = st.radio(
     "表示フィルタ:",
     ("すべて", "未解決のみ", "解決済みのみ")
@@ -62,26 +65,28 @@ elif filter_option == "解決済みのみ":
 else:
     view_df = merged_df
 
-st.write("▼ 以下のテーブルでリンクの解決状況を管理できます。")
+st.write("▼ 以下のテーブルでリンク状態を編集すると、自動で保存されます。")
 
-# (Streamlit 1.25+ のLinkColumnを使う例。うまく動かない場合は単純に列表示)
+# LinkColumn が使える場合の設定 (Streamlit 1.25+)
 column_config = {
     "source": st.column_config.LinkColumn("Source"),
     "url": st.column_config.LinkColumn("URL"),
 }
 
+# ▼ 5) data_editor（ボタン無し）
 edited_df = st.data_editor(
     view_df,
     column_config=column_config,
-    use_container_width=True
+    use_container_width=True,
+    key="editor"  # セッション管理用キーを付けておくと良い
 )
 
-# 5. 「ステータス更新」ボタン → JSON更新
-if st.button("ステータス更新"):
-    # edited_df は現在のフィルタ後のみ。全レコードを更新するためには merged_df の状態も考慮
-    # 簡易方法: フィルタ中のデータのみ更新
+# ここがポイント:
+# 「ユーザーがチェックを変える」→ Streamlit が再実行 → 下記コードが走る → JSONを更新
+def update_json_from_edited(edited):
+    # st.data_editor で返された DataFrame(edited) に含まれる行だけ更新する
     updated_list = []
-    for idx, row in edited_df.iterrows():
+    for idx, row in edited.iterrows():
         updated_list.append({
             "source": row["source"],
             "url": row["url"],
@@ -89,31 +94,28 @@ if st.button("ステータス更新"):
             "resolved_date": row.get("resolved_date", "")
         })
 
-    # resolved を True にした時点で日付が無ければ現在時刻を入れる例
+    # resolved=True にしたら日付をセット、False なら空にする等の運用
     for item in updated_list:
         if item["resolved"] and not item["resolved_date"]:
             item["resolved_date"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         elif not item["resolved"]:
-            # resolved=False に戻したら日付を消すなどの運用も可能
             item["resolved_date"] = ""
 
-    # updated_list を df にし、元 merged_df と付き合わせて最終反映
-    update_df = pd.DataFrame(updated_list)
-
-    # すべての merged_df 行に対して update_df の値をマージ
+    # ▲ フィルタにより一部のみ行が来ているので、merged_df 全体に反映する
+    # あるいは簡略化として「今表示中の行のみ保存する」という運用でもOK
     new_map = {
         (r["source"], r["url"]): {
             "resolved": r["resolved"],
             "resolved_date": r["resolved_date"]
         }
-        for _, r in update_df.iterrows()
+        for r in updated_list
     }
 
+    # merged_df に戻し→ JSON 全体を再生成
     final_rows = []
     for _, row in merged_df.iterrows():
         key = (row["source"], row["url"])
         if key in new_map:
-            # 更新された
             final_rows.append({
                 "source": row["source"],
                 "url": row["url"],
@@ -121,7 +123,6 @@ if st.button("ステータス更新"):
                 "resolved_date": new_map[key]["resolved_date"],
             })
         else:
-            # 編集されていない → そのまま
             final_rows.append({
                 "source": row["source"],
                 "url": row["url"],
@@ -129,10 +130,18 @@ if st.button("ステータス更新"):
                 "resolved_date": row["resolved_date"],
             })
 
-    # JSONへの書き込み
     out_data = {"resolved": final_rows}
     with open(JSON_FILE, "w", encoding="utf-8") as f:
         json.dump(out_data, f, ensure_ascii=False, indent=2)
 
-    st.success("チェック状態を JSON に保存しました。")
-    st.experimental_rerun()
+    st.info("変更内容を自動保存しました。")
+
+# ▼ 6) セッション状態を使い「前回の DataFrame」と比較し、差分があれば JSONを更新
+if "last_df" not in st.session_state:
+    # 初回読み込み時はとりあえず記憶しておく
+    st.session_state["last_df"] = edited_df.copy()
+else:
+    # もし edited_df が前回と違えば更新
+    if not edited_df.equals(st.session_state["last_df"]):
+        update_json_from_edited(edited_df)
+        st.session_state["last_df"] = edited_df.copy()

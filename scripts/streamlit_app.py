@@ -8,63 +8,67 @@ from datetime import datetime
 CSV_FILE = "broken_links.csv"
 JSON_FILE = "resolved_links.json"
 
-st.title("404リンク管理アプリ (JSONログ + Gitコミット版)")
+st.title("404リンク管理アプリ (JSONログ + Gitコミット版) - リアルタイム更新")
 
-# CSV が無ければ停止
+# 1) CSVを読み込み
 if not os.path.exists(CSV_FILE):
     st.warning("まだ404リンク情報がありません。")
     st.stop()
-
 df_404 = pd.read_csv(CSV_FILE)
 
-# JSONを読み込み or 空
+# 2) JSONを読み込み / 空
 resolved_records = []
 if os.path.exists(JSON_FILE):
     with open(JSON_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
         resolved_records = data.get("resolved", [])
-
-# 必要な列がなければ補完
 df_resolved = pd.DataFrame(resolved_records, columns=["source","url","resolved","resolved_date"])
-for col in ["source", "url", "resolved", "resolved_date"]:
+
+# 必要列がなければ補完
+for col in ["source","url","resolved","resolved_date"]:
     if col not in df_resolved.columns:
         if col in ["source","url","resolved_date"]:
             df_resolved[col] = ""
         elif col == "resolved":
             df_resolved[col] = False
 
-# merge
+# 3) merged_df 作成
 merged_df = pd.merge(df_404, df_resolved, on=["source","url"], how="left")
 merged_df["resolved"] = merged_df["resolved"].fillna(False)
 merged_df["resolved_date"] = merged_df["resolved_date"].fillna("")
 
-# UI
-filter_option = st.radio("表示フィルタ:", ("すべて","未解決のみ","解決済みのみ"))
+# 4) フィルタ
+filter_option = st.radio("表示フィルタ:", ["すべて","未解決のみ","解決済みのみ"])
 if filter_option == "未解決のみ":
-    view_df = merged_df[merged_df["resolved"] == False]
+    show_df = merged_df[merged_df["resolved"] == False]
 elif filter_option == "解決済みのみ":
-    view_df = merged_df[merged_df["resolved"] == True]
+    show_df = merged_df[merged_df["resolved"] == True]
 else:
-    view_df = merged_df
+    show_df = merged_df
 
-st.write("▼ テーブルを編集してから「ステータス更新」を押すと、JSONへの書き込みとGitプッシュが行われます。")
+st.write("▼ チェックボックスを変更すると自動で JSON 更新と Git push が行われます。")
 
-edited_df = st.data_editor(view_df, use_container_width=True)
+# 5) data_editor
+edited_df = st.data_editor(show_df, use_container_width=True, key="editor")
 
-if st.button("ステータス更新"):
-    # edited_df の情報を new_map にまとめる
+# 6) 変更を検知し、自動で JSON & Git に反映
+def save_and_push_changes(updated: pd.DataFrame):
+    """
+    1. フィルタされている行 only → merged_df に戻して全行まとめる
+    2. JSON 書き込み
+    3. git commit & push
+    """
+    # a) updated の (source, url) を dict 化
     new_map = {}
-    for idx, row in edited_df.iterrows():
-        r = dict(row)
-        # resolved=True にしたら resolved_date を埋める
-        if r["resolved"] and not r["resolved_date"]:
-            r["resolved_date"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        elif not r["resolved"]:
-            # 未解決に戻したら日付を消すなどの運用も可
-            r["resolved_date"] = ""
-        new_map[(r["source"], r["url"])] = r
+    for _, row in updated.iterrows():
+        # resolved_date の補完
+        if row["resolved"] and not row["resolved_date"]:
+            row["resolved_date"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        elif not row["resolved"]:
+            row["resolved_date"] = ""
+        new_map[(row["source"], row["url"])] = dict(row)
 
-    # 全行ぶん final_rows を構築
+    # b) merged_df に再適用
     final_rows = []
     for _, row in merged_df.iterrows():
         key = (row["source"], row["url"])
@@ -83,25 +87,31 @@ if st.button("ステータス更新"):
                 "resolved_date": row["resolved_date"]
             })
 
-    # JSON書き込み
+    # c) JSON書き込み
     out_data = {"resolved": final_rows}
     with open(JSON_FILE, "w", encoding="utf-8") as f:
         json.dump(out_data, f, ensure_ascii=False, indent=2)
+    st.info("resolved_links.json に自動保存しました。Gitにプッシュを行います...")
 
-    st.success("resolved_links.json に書き込み完了。これからGitにプッシュします。")
-
-    # ▼ Git コマンド実行
+    # d) git commit & push
     try:
-        # ユーザー名/メール設定
         subprocess.run(["git", "config", "user.name", "github-actions"], check=True)
         subprocess.run(["git", "config", "user.email", "github-actions@github.com"], check=True)
-
-        # JSONをコミット & プッシュ
-        subprocess.run(["git", "add", "resolved_links.json"], check=True)
-        subprocess.run(["git", "commit", "-m", "Update resolved_links.json [skip ci]"], check=True)
+        subprocess.run(["git", "add", JSON_FILE], check=True)
+        subprocess.run(["git", "commit", "-m", "Auto update resolved_links.json [skip ci]"], check=True)
         subprocess.run(["git", "push", "origin", "main"], check=True)
 
-        st.info("Gitコミット＆プッシュが完了しました。リポジトリを確認してください。")
-
+        st.success("Gitコミット＆プッシュが完了しました。リポジトリを確認してください。")
     except subprocess.CalledProcessError as e:
-        st.error(f"Gitコマンドの実行でエラーが発生しました: {e}")
+        st.error(f"Gitコマンド失敗: {e}")
+
+# 7) セッション状態に前回の DataFrame を保持し、差分があれば保存・プッシュ
+if "last_edited_df" not in st.session_state:
+    st.session_state["last_edited_df"] = edited_df.copy()
+else:
+    # data_editor はユーザー操作のたび再実行 → 変更を検知
+    if not edited_df.equals(st.session_state["last_edited_df"]):
+        # 変更があったため、自動保存とpush
+        save_and_push_changes(edited_df)
+        # 新しい状態をセッションに保存
+        st.session_state["last_edited_df"] = edited_df.copy()

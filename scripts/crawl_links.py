@@ -9,7 +9,6 @@ from collections import deque
 import pandas as pd
 from datetime import datetime
 
-# クロール対象URL
 ALLOWED_SOURCE_PREFIXES = [
     "https://good-apps.jp/media/column/",
     "https://good-apps.jp/media/category/",
@@ -20,7 +19,6 @@ BASE_DOMAIN = "good-apps.jp"
 ERROR_LIMIT = 30
 
 visited = set()
-# (source, url, status) を格納
 broken_links = []
 
 HEADERS = {
@@ -31,7 +29,6 @@ HEADERS = {
     )
 }
 
-# Slack Webhook (任意)
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 
 
@@ -43,7 +40,6 @@ def is_internal_link(url):
 def is_excluded_domain(url):
     parsed = urlparse(url)
     domain = parsed.netloc.lower()
-    # 404 チェック不要な外部ドメイン例
     exclude_keywords = [
         "google.com",
         "play.google.com",
@@ -63,19 +59,11 @@ def is_allowed_source(url):
 
 
 def record_broken_link(source, url, status):
-    # source がクローラー対象の記事であれば broken_links に追加
     if source and is_allowed_source(source):
         broken_links.append((source, url, status))
 
 
 def crawl():
-    """
-    シンプルな BFS クロール:
-    1. ALLOWED_SOURCE_PREFIXES を初期キューに追加
-    2. 各ページを取得してリンクを走査
-    3. 外部リンクは HEAD で 404 チェック
-    4. 内部リンクは再帰的にクロール対象へ
-    """
     queue = deque(ALLOWED_SOURCE_PREFIXES)
     while queue:
         if len(broken_links) >= ERROR_LIMIT:
@@ -91,14 +79,12 @@ def crawl():
         try:
             resp = requests.get(current, headers=HEADERS, timeout=10)
             if resp.status_code == 404 and current not in ALLOWED_SOURCE_PREFIXES:
-                # 404 だった場合
                 if is_allowed_source(current):
                     broken_links.append((current, current, 404))
                 if len(broken_links) >= ERROR_LIMIT:
                     return
                 continue
 
-            # リンク探索
             soup = BeautifulSoup(resp.text, 'html.parser')
             for a_tag in soup.find_all('a', href=True):
                 if len(broken_links) >= ERROR_LIMIT:
@@ -115,7 +101,6 @@ def crawl():
                         queue.append(link)
 
         except Exception as e:
-            # タイムアウトやその他例外
             if is_allowed_source(current):
                 broken_links.append((current, current, f"Error: {str(e)}"))
             if len(broken_links) >= ERROR_LIMIT:
@@ -130,22 +115,14 @@ def check_status(url, source):
         if r.status_code == 404:
             record_broken_link(source, url, 404)
         elif r.status_code in (403, 405):
-            # HEAD禁止なら GET を実行して404かどうか再チェック
             r2 = requests.get(url, headers=HEADERS, timeout=10)
             if r2.status_code == 404:
                 record_broken_link(source, url, 404)
     except Exception:
-        pass  # スキップ
+        pass
 
 
 def update_csv(broken):
-    """
-    broken_links.csv を「最新の404」だけに更新する。
-    - 既存レコードがあれば detected_date を継承
-    - 新規リンクには現在日時を設定
-    - 既存CSVにあって今回見つからなかったリンクは削除（常に最新の404だけ管理）
-    カラム: [source, url, status, detected_date]
-    """
     new_map = {}
     for src, link, st_code in broken:
         new_map[(src, link)] = st_code
@@ -153,7 +130,6 @@ def update_csv(broken):
     old_df = pd.DataFrame(columns=["source", "url", "status", "detected_date"])
     if os.path.exists("broken_links.csv"):
         old_df = pd.read_csv("broken_links.csv")
-        # カラム不足を補填
         if "detected_date" not in old_df.columns:
             old_df["detected_date"] = ""
 
@@ -168,7 +144,6 @@ def update_csv(broken):
     updated_rows = []
     for (src, link), st_code in new_map.items():
         if (src, link) in old_map:
-            # 既存行を継承
             rowdata = old_map[(src, link)]
             row = {
                 "source": src,
@@ -177,7 +152,6 @@ def update_csv(broken):
                 "detected_date": rowdata["detected_date"] or datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
         else:
-            # 新規
             row = {
                 "source": src,
                 "url": link,
@@ -187,7 +161,6 @@ def update_csv(broken):
         updated_rows.append(row)
 
     new_df = pd.DataFrame(updated_rows)
-    # 日付が空のものを埋める
     mask_no_date = new_df["detected_date"].isnull() | (new_df["detected_date"] == "")
     new_df.loc[mask_no_date, "detected_date"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     new_df.to_csv("broken_links.csv", index=False)
@@ -195,12 +168,8 @@ def update_csv(broken):
 
 
 def send_slack_notification(broken):
-    """
-    Slack通知 (任意)。
-    """
     if not SLACK_WEBHOOK_URL:
         return
-
     count = len(broken)
     msg = f"【404チェック結果】\n404が {count} 件検出されました。詳細は 'broken_links.csv' をご確認ください。"
     try:

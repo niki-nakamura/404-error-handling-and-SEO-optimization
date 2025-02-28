@@ -1,0 +1,45 @@
+name: Push Resolved Logs
+
+on:
+  workflow_dispatch:   # 手動実行できる
+  schedule:
+    - cron: '0 7 * * *'  # 毎日朝7時 などお好みで
+
+jobs:
+  push-json:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Copy resolved_links.json from remote server
+        run: |
+          # ここがポイント: Actions の環境は真っさらなので、
+          # "サーバー上" からファイルを取得する必要がある。
+          # 例: scp でダウンロードする / S3 からダウンロード / など
+          # あるいは事前にサーバーがgit pushしていれば不要。
+          echo "Placeholder: Download resolved_links.json from your server"
+
+      - name: Commit & Push JSON
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          
+          git add resolved_links.json
+          git commit -m "Update resolved_links.json [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:${{ github.ref_name }}

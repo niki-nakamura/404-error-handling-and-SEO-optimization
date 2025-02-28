@@ -2,8 +2,10 @@ name: Link Checker
 
 on:
   schedule:
-    # 毎日 朝 6 時に実行する場合は '0 6 * * *'
+    # 毎日 朝6時に実行
     - cron: '0 6 * * *'
+    # 毎週月曜 9:30に実行
+    - cron: '30 9 * * 1'
   workflow_dispatch:
 
 jobs:
@@ -41,7 +43,25 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
+          
           git add broken_links.csv
           git commit -m "Update broken_links.csv [skip ci]" || echo "No changes to commit"
           git push origin HEAD:${{ github.ref_name }}
+
+      - name: Send Weekly Slack Alert
+        run: |
+          # 月曜だけSlack通知を飛ばす
+          CURRENT_DAY=$(date +'%u')
+          CURRENT_HOUR=$(date +'%H')
+          CURRENT_MINUTE=$(date +'%M')
+
+          # 月曜(1)の9:30だけ実行
+          if [[ "$CURRENT_DAY" == "1" && "$CURRENT_HOUR" == "09" && "$CURRENT_MINUTE" == "30" ]]; then
+              echo "Sending Slack alert..."
+              # Slack通知の処理を追記 (下記は例です)
+              # curl -X POST -H 'Content-type: application/json' \
+              #      --data '{\"text\":\"新たに404がX件見つかりました。\"}' \
+              #      \"$SLACK_WEBHOOK_URL\"
+          else
+              echo "Skipping Slack alert (not Monday 9:30)."
+          fi

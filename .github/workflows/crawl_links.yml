@@ -9,7 +9,35 @@ on:
   workflow_dispatch:
 
 jobs:
+  streamlit_app_run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Streamlit (with some method to keep it alive, or ephemeral)
+        run: |
+          streamlit run scripts/streamlit_app.py --server.headless=true --server.port=8501
+
+      # 何らかの仕組みでユーザーがブラウザからアクセス → チェックを更新
+
+      - name: Commit & push updated CSV
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add broken_links.csv
+          git commit -m "Update broken_links.csv [skip ci]" || echo "No changes"
+          git push origin HEAD:${{ github.ref_name }}
   build:
+
     runs-on: ubuntu-latest
 
     permissions:

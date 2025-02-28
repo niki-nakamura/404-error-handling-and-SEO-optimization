@@ -7,6 +7,7 @@ from urllib.parse import urljoin, urlparse
 import os
 from collections import deque
 import pandas as pd
+from datetime import datetime
 
 # クロール対象のURLは以下の3つのみ（/以降のすべてのURLが対象）
 ALLOWED_SOURCE_PREFIXES = [
@@ -21,7 +22,8 @@ BASE_DOMAIN = "good-apps.jp"  # 内部リンクの判定に使用
 ERROR_LIMIT = 30
 
 visited = set()
-# broken_links のタプル形式は (発生元記事URL, 壊れているリンクURL, ステータス)
+# broken_links のタプル形式は (発生元記事URL, 壊れているリンクURL, ステータス) で収集
+# 最後にCSVと付き合わせる際に日付を付与する
 broken_links = []
 
 # ブラウザ風の User-Agent を設定
@@ -36,12 +38,14 @@ HEADERS = {
 # Slack Webhook 用の設定
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 
+
 def is_internal_link(url):
     """
     URL が内部リンク (good-apps.jp) かどうかを判定
     """
     parsed = urlparse(url)
     return (parsed.netloc == "" or parsed.netloc.endswith(BASE_DOMAIN))
+
 
 def is_excluded_domain(url):
     """
@@ -62,6 +66,7 @@ def is_excluded_domain(url):
     ]
     return any(k in domain for k in exclude_keywords)
 
+
 def is_allowed_source(url):
     """
     発生元記事またはクロール対象として許可されているかを判定
@@ -69,12 +74,14 @@ def is_allowed_source(url):
     """
     return any(url.startswith(prefix) for prefix in ALLOWED_SOURCE_PREFIXES)
 
+
 def record_broken_link(source, url, status):
     """
     許可対象の記事 (source) における壊れたリンク (url) を記録
     """
     if source and is_allowed_source(source):
         broken_links.append((source, url, status))
+
 
 def crawl():
     # 初期キューは許可対象の3つのURL
@@ -130,6 +137,7 @@ def crawl():
             if len(broken_links) >= ERROR_LIMIT:
                 return
 
+
 def check_status(url, source):
     """
     外部リンクなどにHEADを投げ、404なら記録。
@@ -152,13 +160,67 @@ def check_status(url, source):
         print(f"[DEBUG] Exception in check_status for {url}: {e}")
         # エラー時には記録せずスキップ
 
+
 def update_streamlit_data(broken):
     """
-    404リンク一覧をCSVへ書き出し、Streamlit管理アプリで参照。
+    404リンク一覧をCSVへ書き出し (検出日込み)。
+    実行毎にリストにあるデータだけを上書き保存する。
+    すでにCSVにあるリンクは検出日を維持、新規リンクのみ現在日時をセット。
     """
-    df = pd.DataFrame(broken, columns=["source", "url", "status"])
-    df.to_csv("broken_links.csv", index=False)
-    print("[DEBUG] 'broken_links.csv' written.")
+    new_broken_dict = {}
+    for source, url, status in broken:
+        new_broken_dict[(source, url)] = status
+
+    # 読み込み用の既存DF（なければ空）
+    old_df = pd.DataFrame(columns=["source", "url", "status", "detected_date", "resolved"])
+    if os.path.exists("broken_links.csv"):
+        old_df = pd.read_csv("broken_links.csv")
+        # 欠けている列を補完
+        if 'detected_date' not in old_df.columns:
+            old_df['detected_date'] = ""
+        if 'resolved' not in old_df.columns:
+            old_df['resolved'] = False
+
+    # 既存の (source, url) → 行データ
+    old_dict = {}
+    for i, row in old_df.iterrows():
+        key = (row['source'], row['url'])
+        old_dict[key] = {
+            'source': row['source'],
+            'url': row['url'],
+            'status': row['status'],
+            'detected_date': row.get('detected_date', ''),
+            'resolved': row.get('resolved', False)
+        }
+
+    updated_rows = []
+
+    # 今回検出されたリンクのみ CSV に反映
+    for (source, url), status in new_broken_dict.items():
+        if (source, url) in old_dict:
+            # 既存レコードを更新
+            record = old_dict[(source, url)]
+            record['status'] = status
+            # 必要に応じて resolved を上書きするかどうか決める。ここでは維持。
+        else:
+            # 新規レコード
+            record = {
+                'source': source,
+                'url': url,
+                'status': status,
+                'detected_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'resolved': False
+            }
+        updated_rows.append(record)
+
+    new_df = pd.DataFrame(updated_rows)
+    # 検出日が空のものには念のため現在日時をセット
+    mask_no_date = new_df['detected_date'].isnull() | (new_df['detected_date'] == '')
+    new_df.loc[mask_no_date, 'detected_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    new_df.to_csv("broken_links.csv", index=False)
+    print("[DEBUG] 'broken_links.csv' updated.")
+
 
 def send_slack_notification(broken):
     """
@@ -182,6 +244,7 @@ def send_slack_notification(broken):
     except Exception as e:
         print(f"[DEBUG] Slack notification failed: {e}")
 
+
 def main():
     print("Starting crawl from allowed URLs:")
     for url in ALLOWED_SOURCE_PREFIXES:
@@ -193,6 +256,7 @@ def main():
 
     update_streamlit_data(broken_links)
     send_slack_notification(broken_links)
+
 
 if __name__ == "__main__":
     main()

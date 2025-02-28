@@ -18,6 +18,7 @@ if 'resolved' not in df.columns:
 if 'detected_date' not in df.columns:
     df['detected_date'] = ""
 
+# フィルタ
 filter_option = st.radio(
     "表示するデータのフィルタ:",
     ("すべて", "未解決のみ", "解決済みのみ")
@@ -32,19 +33,17 @@ else:
 
 st.write("▼ 以下のテーブルで、リンク状態を編集できます。")
 
-# Streamlit 1.25+ で有効になる LinkColumn 設定
-# 'source' や 'url' の値をクリック可能なリンクにする
+# クリック可能リンクとして表示したい列を LinkColumn に指定
 column_config = {
     "source": st.column_config.LinkColumn(
         label="Source",
-        help="クリックでリンク先を開きます",
-        href_pattern="{source}"  # カラム 'source' の値をリンクに利用
+        help="クリックでソース記事へ移動"
     ),
     "url": st.column_config.LinkColumn(
         label="URL",
-        help="クリックでリンク先を開きます",
-        href_pattern="{url}"     # カラム 'url' の値をリンクに利用
+        help="クリックでリンク先へ移動"
     ),
+    # その他の列は自動設定 or 必要に応じて設定
 }
 
 edited_df = st.data_editor(
@@ -53,11 +52,11 @@ edited_df = st.data_editor(
     use_container_width=True
 )
 
-# 更新ボタン押下で resolved カラムを更新
+# 解決状況の更新
 if st.button("ステータス更新"):
     for idx, row in edited_df.iterrows():
-        mask = (df["url"] == row["url"]) & (df["source"] == row["source"])
-        df.loc[mask, "resolved"] = row["resolved"]
+        mask = (df['url'] == row['url']) & (df['source'] == row['source'])
+        df.loc[mask, 'resolved'] = row['resolved']
 
     df.to_csv(csv_file, index=False)
     st.success("ステータスを更新しました。")

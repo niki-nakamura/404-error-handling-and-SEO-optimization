@@ -44,4 +44,3 @@ jobs:
           git add broken_links.csv
           git commit -m "Update broken_links.csv [skip ci]" || echo "No changes to commit"
           git push origin HEAD:${{ github.ref_name }}
-

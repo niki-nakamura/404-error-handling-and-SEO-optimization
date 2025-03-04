@@ -56,7 +56,7 @@ def save_and_push_changes(updated: pd.DataFrame):
     """
     1. フィルタされている行 only → merged_df に戻して全行まとめる
     2. JSON 書き込み
-    3. git commit & push
+    3. git commit & push（差分があるときだけ）
     """
     # a) updated の (source, url) を dict 化
     new_map = {}
@@ -94,16 +94,20 @@ def save_and_push_changes(updated: pd.DataFrame):
     st.info("resolved_links.json に自動保存しました。Gitにプッシュを行います...")
 
     # d) git commit & push
-    try:
-        subprocess.run(["git", "config", "user.name", "github-actions"], check=True)
-        subprocess.run(["git", "config", "user.email", "github-actions@github.com"], check=True)
+    subprocess.run(["git", "config", "user.name", "github-actions"], check=True)
+    subprocess.run(["git", "config", "user.email", "github-actions@github.com"], check=True)
+
+    # 変更があるかを確認する（diffがあれば差分があるためreturncode=1となる）
+    diff_result = subprocess.run(["git", "diff", "--exit-code", JSON_FILE])
+    if diff_result.returncode != 0:
+        # 変更あり → commit & push
         subprocess.run(["git", "add", JSON_FILE], check=True)
         subprocess.run(["git", "commit", "-m", "Auto update resolved_links.json [skip ci]"], check=True)
         subprocess.run(["git", "push", "origin", "main"], check=True)
-
         st.success("Gitコミット＆プッシュが完了しました。リポジトリを確認してください。")
-    except subprocess.CalledProcessError as e:
-        st.error(f"Gitコマンド失敗: {e}")
+    else:
+        # 変更が無い場合はcommitしない
+        st.info("変更が無いためコミットをスキップしました。")
 
 # 7) セッション状態に前回の DataFrame を保持し、差分があれば保存・プッシュ
 if "last_edited_df" not in st.session_state:

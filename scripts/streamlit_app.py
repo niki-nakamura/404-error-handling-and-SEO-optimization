@@ -37,6 +37,14 @@ merged_df = pd.merge(df_404, df_resolved, on=["source","url"], how="left")
 merged_df["resolved"] = merged_df["resolved"].fillna(False)
 merged_df["resolved_date"] = merged_df["resolved_date"].fillna("")
 
+# 3.5) source == url は自動で resolved=True とする
+auto_resolve_mask = merged_df["source"] == merged_df["url"]
+merged_df.loc[auto_resolve_mask, "resolved"] = True
+
+# resolved_date が未設定なら現在日時を入れる
+date_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+merged_df.loc[auto_resolve_mask & (merged_df["resolved_date"] == ""), "resolved_date"] = date_now
+
 # 4) フィルタ
 filter_option = st.radio("表示フィルタ:", ["すべて","未解決のみ","解決済みのみ"])
 if filter_option == "未解決のみ":
@@ -48,7 +56,7 @@ else:
 
 st.write("▼ チェックボックスを変更すると自動で JSON 更新と Git push が行われます。")
 
-# 5) data_editor
+# 5) data_editor で表示
 edited_df = st.data_editor(show_df, use_container_width=True, key="editor")
 
 # 6) 変更を検知し、自動で JSON & Git に反映
@@ -97,7 +105,7 @@ def save_and_push_changes(updated: pd.DataFrame):
     subprocess.run(["git", "config", "user.name", "github-actions"], check=True)
     subprocess.run(["git", "config", "user.email", "github-actions@github.com"], check=True)
 
-    # 変更があるかを確認する（diffがあれば差分があるためreturncode=1となる）
+    # 変更があるかを確認する（diffがあれば returncode != 0）
     diff_result = subprocess.run(["git", "diff", "--exit-code", JSON_FILE])
     if diff_result.returncode != 0:
         # 変更あり → commit & push

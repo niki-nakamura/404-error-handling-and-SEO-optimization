@@ -1,15 +1,17 @@
-name: Daily Link Crawler
+name: Link Checker
 
 on:
   schedule:
     - cron: '0 6 * * *'    # 毎日 朝6時
-  workflow_dispatch:
+    - cron: '30 9 * * 1'   # 毎週月曜 9:30
+  workflow_dispatch:       # 手動実行も可能
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     permissions:
-      contents: write
+      contents: write   # broken_links.csv をコミットするために必要
 
     steps:
       - name: Check out the repository
@@ -29,9 +31,11 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run crawler (no Slack)
+      - name: Run crawler
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          python scripts/crawl_links.py --no-slack  # <-- 後述の修正で「Slackしない」オプションを受け取る
+          python scripts/crawl_links.py
 
       - name: Commit & Push broken_links.csv
         run: |
@@ -40,3 +44,4 @@ jobs:
           git add broken_links.csv
           git commit -m "Update broken_links.csv [skip ci]" || echo "No changes to commit"
           git push origin HEAD:${{ github.ref_name }}
+

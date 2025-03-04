@@ -1,15 +1,13 @@
-name: Link Checker
+name: Daily Link Crawler
 
 on:
   schedule:
     - cron: '0 6 * * *'    # 毎日 朝6時
-    - cron: '30 9 * * 1'   # 毎週月曜9:30
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
 
@@ -31,11 +29,9 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run crawler
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Run crawler (no Slack)
         run: |
-          python scripts/crawl_links.py
+          python scripts/crawl_links.py --no-slack  # <-- 後述の修正で「Slackしない」オプションを受け取る
 
       - name: Commit & Push broken_links.csv
         run: |

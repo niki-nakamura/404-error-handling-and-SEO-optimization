@@ -16,7 +16,7 @@ ALLOWED_SOURCE_PREFIXES = [
 ]
 
 BASE_DOMAIN = "good-apps.jp"
-ERROR_LIMIT = 30
+ERROR_LIMIT = 100
 
 visited = set()
 broken_links = []
@@ -106,8 +106,8 @@ def crawl():
             if len(broken_links) >= ERROR_LIMIT:
                 return
 
-
 def check_status(url, source):
+    # 2) 特定ドメインは除外
     if is_excluded_domain(url):
         return
     try:

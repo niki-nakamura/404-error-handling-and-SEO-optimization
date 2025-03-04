@@ -53,6 +53,7 @@ def is_excluded_domain(url):
         "g.co",
         "youtu.be",
         "amazon.co.jp",
+        "transit.yahoo.co.jp",
         "youtube.com",
     ]
     return any(k in domain for k in exclude_keywords)

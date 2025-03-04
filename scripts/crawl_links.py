@@ -83,13 +83,7 @@ def crawl():
 
         try:
             resp = requests.get(current, headers=HEADERS, timeout=10)
-            if resp.status_code == 404 and current not in ALLOWED_SOURCE_PREFIXES:
-                if is_allowed_source(current):
-                    broken_links.append((current, current, 404))
-                if len(broken_links) >= ERROR_LIMIT:
-                    return
-                continue
-
+           
             soup = BeautifulSoup(resp.text, 'html.parser')
             for a_tag in soup.find_all('a', href=True):
                 if len(broken_links) >= ERROR_LIMIT:

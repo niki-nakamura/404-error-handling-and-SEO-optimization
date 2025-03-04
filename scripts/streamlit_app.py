@@ -8,7 +8,7 @@ from datetime import datetime
 CSV_FILE = "broken_links.csv"
 JSON_FILE = "resolved_links.json"
 
-st.title("404リンク管理アプリ (JSONログ + Gitコミット版) - リアルタイム更新")
+st.title("404リンク管理アプリ - リアルタイム更新")
 
 # 1) CSVを読み込み
 if not os.path.exists(CSV_FILE):

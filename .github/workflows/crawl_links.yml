@@ -2,16 +2,16 @@ name: Link Checker
 
 on:
   schedule:
-    - cron: '0 6 * * *'    # 毎日 朝6時
-    - cron: '30 9 * * 1'   # 毎週月曜 9:30
-  workflow_dispatch:       # 手動実行も可能
+    - cron: '0 6 * * *'
+    - cron: '30 9 * * 1'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write   # broken_links.csv をコミットするために必要
+      contents: write
 
     steps:
       - name: Check out the repository
@@ -20,6 +20,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
           fetch-depth: 0
+
+      - name: Pull latest changes
+        run: git pull origin main
 
       - name: Set up Python
         uses: actions/setup-python@v4

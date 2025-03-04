@@ -40,6 +40,7 @@ def is_internal_link(url):
     parsed = urlparse(url)
     return (parsed.netloc == "" or parsed.netloc.endswith(BASE_DOMAIN))
 
+
 def is_excluded_domain(url):
     parsed = urlparse(url)
     domain = parsed.netloc.lower()
@@ -56,14 +57,15 @@ def is_excluded_domain(url):
     ]
     return any(k in domain for k in exclude_keywords)
 
+
 def is_allowed_source(url):
     return any(url.startswith(prefix) for prefix in ALLOWED_SOURCE_PREFIXES)
 
+
 def record_broken_link(source, url, status):
-    # source == url でもCSVに記録したい場合はこのまま。
-    # 不要ならここで弾いてもよい → if source == url: return
     if source and is_allowed_source(source):
         broken_links.append((source, url, status))
+
 
 def crawl():
     queue = deque(ALLOWED_SOURCE_PREFIXES)
@@ -81,7 +83,6 @@ def crawl():
         try:
             resp = requests.get(current, headers=HEADERS, timeout=10)
             if resp.status_code == 404 and current not in ALLOWED_SOURCE_PREFIXES:
-                # ページ自体が404の場合
                 if is_allowed_source(current):
                     broken_links.append((current, current, 404))
                 if len(broken_links) >= ERROR_LIMIT:
@@ -104,11 +105,11 @@ def crawl():
                         queue.append(link)
 
         except Exception as e:
-            # タイムアウトや接続失敗など
             if is_allowed_source(current):
                 broken_links.append((current, current, f"Error: {str(e)}"))
             if len(broken_links) >= ERROR_LIMIT:
                 return
+
 
 def check_status(url, source):
     if is_excluded_domain(url):
@@ -124,6 +125,7 @@ def check_status(url, source):
     except Exception:
         pass
 
+
 def update_csv(broken):
     new_map = {}
     for src, link, st_code in broken:
@@ -132,11 +134,9 @@ def update_csv(broken):
     old_df = pd.DataFrame(columns=["source", "url", "status", "detected_date"])
     if os.path.exists("broken_links.csv"):
         old_df = pd.read_csv("broken_links.csv")
-        # カラムが無い場合に補完
         if "detected_date" not in old_df.columns:
             old_df["detected_date"] = ""
 
-    # old_df を辞書化
     old_map = {}
     for _, row in old_df.iterrows():
         key = (row["source"], row["url"])
@@ -145,7 +145,6 @@ def update_csv(broken):
             "detected_date": row.get("detected_date", "")
         }
 
-    # 新しい404群をマージ
     updated_rows = []
     for (src, link), st_code in new_map.items():
         if (src, link) in old_map:
@@ -169,22 +168,24 @@ def update_csv(broken):
     mask_no_date = new_df["detected_date"].isnull() | (new_df["detected_date"] == "")
     new_df.loc[mask_no_date, "detected_date"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    # 既存と結合し、重複行を排除
-    merged_df = pd.concat([old_df, new_df], ignore_index=True).drop_duplicates(["source","url"], keep="last")
+    merged_df = pd.concat([old_df, new_df], ignore_index=True).drop_duplicates(["source", "url"], keep="last")
     merged_df.to_csv("broken_links.csv", index=False)
     print("[DEBUG] 'broken_links.csv' updated.")
 
+
 def send_slack_notification():
     """
-    「broken_links.csv に載っている404件数」を Slack に送信。
-    ただし曜日によってはスキップなど柔軟に設定可。
+    broken_links.csv に記載の404件数を Slack に通知します。
+    定期実行(schedule)の場合は月曜のみ通知し、
+    手動実行(workflow_dispatch)の場合は必ず通知を送信します。
     """
-    # --- 例: 曜日チェックで「月曜のみ通知」するなら ---
-    # 月曜=0, 火曜=1, ... 日曜=6
-    weekday = datetime.now().weekday()
-    if weekday != 0:
-        print("[INFO] Not Monday. Skip Slack notification.")
-        return
+    event_name = os.environ.get("GITHUB_EVENT_NAME", "")
+    # 定期実行の場合のみ曜日チェックを実施
+    if event_name != "workflow_dispatch":
+        weekday = datetime.now().weekday()
+        if weekday != 0:
+            print("[INFO] Not Monday. Skip Slack notification.")
+            return
 
     if not SLACK_WEBHOOK_URL:
         print("[INFO] SLACK_WEBHOOK_URL is not set. Skip Slack notification.")
@@ -194,11 +195,8 @@ def send_slack_notification():
     unresolved_count = 0
     if os.path.exists(csv_file):
         df = pd.read_csv(csv_file)
-        # ここでは CSV内の「status=404」レコード数を「未解決」とみなす例
-        # 解決済みを管理したい場合は resolved_links.json を突き合わせるロジックを追加する
         unresolved_count = len(df[df["status"] == 404])
 
-    # Slackメッセージ
     msg = (
         "❗404チェック結果❗\n\n"
         f"現在、未解決の404は {unresolved_count} 件です。\n"
@@ -214,13 +212,12 @@ def send_slack_notification():
     except Exception as e:
         print("[DEBUG] Slack notification exception:", e)
 
+
 def main():
-    # 1) クロール実行
     crawl()
-    # 2) CSV更新
     update_csv(broken_links)
-    # 3) Slack通知(曜日判定などは関数内で処理)
     send_slack_notification()
+
 
 if __name__ == "__main__":
     main()

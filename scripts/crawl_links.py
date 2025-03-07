@@ -193,7 +193,7 @@ def send_slack_notification():
         unresolved_count = len(df[df["status"] == 404])
 
     msg = (
-        "❗404チェック結果❗\n\n"
+        "📌404チェック結果\n\n"
         f"現在、未解決の404は {unresolved_count} 件です。\n"
         "詳細は <https://404-error-handling-and-seo-optimization-3dfnrzsdeyjchhvjqjn4kr.streamlit.app/|404リンク管理アプリ> をご確認ください。\n"
     )

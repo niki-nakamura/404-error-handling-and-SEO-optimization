@@ -1,6 +1,5 @@
 source,url,status,detected_date
 https://good-apps.jp/media/column/25192,https://transit.yahoo.co.jp,404,2025-03-01 07:50:39
-https://good-apps.jp/media/column/6553,https://good-apps.jp/media/column/6553,404,2025-03-04 05:56:55
 https://good-apps.jp/media/column/app/tool/news-reading-apps/,https://good-apps.jp/media/column/app/tool/news-reading-apps/,404,2025-03-01 07:50:39
 https://good-apps.jp/media/column/app/tool/yahoo-news-app-howto-notice-setting/,https://good-apps.jp/media/column/app/tool/yahoo-news-app-howto-notice-setting/,404,2025-03-01 07:50:39
 https://good-apps.jp/media/column/app/nhk-news-prevention-how-to-use/,https://good-apps.jp/media/column/app/nhk-news-prevention-how-to-use/,404,2025-03-01 07:50:39
@@ -40,4 +39,42 @@ https://good-apps.jp/media/column/10574,https://good-apps.jp/media/column/10574,
 https://good-apps.jp/media/column/10145,https://good-apps.jp/media/column/10145,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-13 08:16:31
 https://good-apps.jp/media/column/10182,https://good-apps.jp/media/column/10182,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-13 08:16:31
 https://good-apps.jp/media/column/8648,https://good-apps.jp/media/column/8648,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-13 08:16:31
+https://good-apps.jp/media/category/maps-navigation,https://good-apps.jp/media/category/maps-navigation,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/transportation,https://good-apps.jp/media/category/transportation,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/shopping-auction,https://good-apps.jp/media/category/shopping-auction,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/finance-money,https://good-apps.jp/media/category/finance-money,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/study,https://good-apps.jp/media/category/study,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/business-work,https://good-apps.jp/media/category/business-work,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/photo-video,https://good-apps.jp/media/category/photo-video,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/news-weather,https://good-apps.jp/media/category/news-weather,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/healthcare,https://good-apps.jp/media/category/healthcare,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/beauty-fashion,https://good-apps.jp/media/category/beauty-fashion,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/23431,https://good-apps.jp/media/column/23431,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/22708,https://good-apps.jp/media/column/22708,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/22219,https://good-apps.jp/media/column/22219,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/21483,https://good-apps.jp/media/column/21483,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/21199,https://good-apps.jp/media/column/21199,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/9364,https://good-apps.jp/media/column/9364,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/16829,https://good-apps.jp/media/column/16829,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/23829,https://good-apps.jp/media/column/23829,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/24005,https://good-apps.jp/media/column/24005,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/1246,https://good-apps.jp/media/column/1246,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/6234,https://good-apps.jp/media/column/6234,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/photo-video/camera,https://good-apps.jp/media/category/photo-video/camera,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/19739,https://good-apps.jp/media/column/19739,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/19826,https://good-apps.jp/media/column/19826,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/22669,https://good-apps.jp/media/column/22669,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/15813,https://good-apps.jp/media/column/15813,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/22899,https://good-apps.jp/media/column/22899,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/18599,https://good-apps.jp/media/column/18599,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/uncategorized,https://good-apps.jp/media/category/uncategorized,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/23484,https://good-apps.jp/media/column/23484,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/6553,https://good-apps.jp/media/column/6553,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-04 05:56:55
+https://good-apps.jp/media/column/392/,https://good-apps.jp/media/column/392/,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/column/2808/,https://good-apps.jp/media/column/2808/,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/study/study-support,https://good-apps.jp/media/category/study/study-support,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/healthcare/muscle-training,https://good-apps.jp/media/category/healthcare/muscle-training,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/study/language-learning,https://good-apps.jp/media/category/study/language-learning,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/business-work/document-management,https://good-apps.jp/media/category/business-work/document-management,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
+https://good-apps.jp/media/category/photo-video/video-editing,https://good-apps.jp/media/category/photo-video/video-editing,"Error: HTTPSConnectionPool(host='good-apps.jp', port=443): Read timed out. (read timeout=10)",2025-03-17 08:08:37
 https://good-apps.jp/media/app/17580,https://snkrdunk.com/,404,2025-03-01 07:50:39

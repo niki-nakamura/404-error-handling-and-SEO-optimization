@@ -57,49 +57,42 @@ else:
 st.write("▼ チェックボックスを変更すると自動で JSON 更新と Git push が行われます。")
 
 ###############################################################################
-# ★ ここから追加: data_editor の見た目をカスタムするための CSS を埋め込み
+# 表示する data_editor のスタイルを変更（CSS）
 ###############################################################################
 st.markdown(
     """
     <style>
-    /* data_editor 全体の枠線など */
+    /* data_editor 全体の枠線を消す */
     [data-testid="stDataEditor"] {
-        border: 1px solid #ccc;
-        border-radius: 6px;
+        border: none !important;
+        padding: 0;
+    }
+
+    /* テーブル自体の余白や罫線を最小限に */
+    [data-testid="stDataEditor"] table {
+        border-collapse: collapse;
+        border: none !important;
+    }
+
+    /* ヘッダーの下だけ線を引き、背景色を薄くする */
+    [data-testid="stDataEditor"] thead tr th {
+        border-bottom: 1px solid #ccc;
+        background-color: #f9f9f9;
+        font-weight: bold;
         padding: 8px;
     }
-    
-    /* テーブルのスタイリング */
-    [data-testid="stDataEditor"] table {
-        width: 100%;
-        border-collapse: collapse;
-    }
 
-    /* ヘッダ行の背景色と文字スタイル */
-    [data-testid="stDataEditor"] thead tr th {
-        background-color: #f0f0f0;
-        font-weight: bold;
-        border-bottom: 1px solid #ccc;
-    }
-
-    /* セルのボーダー・余白設定 */
-    [data-testid="stDataEditor"] tbody tr td,
-    [data-testid="stDataEditor"] thead tr th {
-        border: 1px solid #ccc;
-        padding: 6px;
-    }
-
-    /* チェックボックスやテキスト色などの調整例 */
-    [data-baseweb="checkbox"] label {
-        color: #333;
-        font-weight: normal;
+    /* ボディ部分は行区切り線を消してスッキリ */
+    [data-testid="stDataEditor"] tbody tr td {
+        border: none !important;
+        padding: 8px;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# 5) data_editor で表示 (CSS の適用によりスタイリング)
+# 5) data_editor で表示 (CSS の適用により見やすく)
 edited_df = st.data_editor(show_df, use_container_width=True, key="editor")
 
 # 6) 変更を検知し、自動で JSON & Git に反映
